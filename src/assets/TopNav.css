@@ -1,0 +1,176 @@
+/* ── TopNav.css ───────────────────────────────────────────── */
+
+:root {
+  --topnav-height: 7vh;
+  --topnav-bg: #ffffff;
+  --topnav-border: rgba(0, 0, 0, 0.07);
+  --topnav-text: #111111;
+  --topnav-muted: #888888;
+  --topnav-subtle: #bbbbbb;
+  --topnav-hover-bg: #f5f5f5;
+  --topnav-hover-border: rgba(0, 0, 0, 0.07);
+  --topnav-divider: rgba(0, 0, 0, 0.08);
+  --topnav-avatar-bg: #f0f0f0;
+  --topnav-avatar-border: rgba(0, 0, 0, 0.07);
+  --topnav-dot: #E24B4A;
+  --topnav-dot-border: #ffffff;
+  --topnav-font: 'Geist', 'Inter', system-ui, sans-serif;
+}
+
+.dark {
+  --topnav-bg: #141414;
+  --topnav-border: rgba(255, 255, 255, 0.07);
+  --topnav-text: #f0f0f0;
+  --topnav-muted: #555555;
+  --topnav-subtle: #444444;
+  --topnav-hover-bg: #1e1e1e;
+  --topnav-hover-border: rgba(255, 255, 255, 0.08);
+  --topnav-divider: rgba(255, 255, 255, 0.08);
+  --topnav-avatar-bg: #1e1e1e;
+  --topnav-avatar-border: rgba(255, 255, 255, 0.08);
+  --topnav-dot-border: #141414;
+}
+
+
+/* ── Shell ──────────────────────────────────────────────── */
+
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: var(--nav-width, 228px);      /* matches LeftNav width */
+  right: 0;
+  height: var(--topnav-height);
+  background: var(--topnav-bg);
+  border-bottom: 0.5px solid var(--topnav-border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  z-index: 90;
+  font-family: var(--topnav-font);
+  transition: left 0.2s;
+}
+
+/* On tablet the sidebar collapses to 64px */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .top-nav {
+    left: 64px;
+  }
+}
+
+/* On mobile sidebar is hidden, top nav spans full width */
+@media (max-width: 768px) {
+  .top-nav {
+    left: 0;
+    padding: 0 16px;
+  }
+}
+
+
+/* ── Breadcrumb / title ─────────────────────────────────── */
+
+.top-nav-breadcrumb {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.top-nav-section {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--topnav-text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ── Controls row ───────────────────────────────────────── */
+
+.top-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Icon buttons */
+.top-nav-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: transparent;
+  border: 0.5px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--topnav-muted);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  position: relative;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.top-nav-btn:hover {
+  background: var(--topnav-hover-bg);
+  border-color: var(--topnav-hover-border);
+  color: var(--topnav-text);
+}
+
+.top-nav-btn:active {
+  transform: scale(0.96);
+}
+
+/* Notification dot */
+.notif-btn {
+  position: relative;
+}
+
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--topnav-dot);
+  border: 1.5px solid var(--topnav-dot-border);
+  pointer-events: none;
+}
+
+/* Vertical divider */
+.top-nav-divider {
+  width: 0.5px;
+  height: 20px;
+  background: var(--topnav-divider);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Avatar */
+.top-nav-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--topnav-avatar-bg);
+  border: 0.5px solid var(--topnav-avatar-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--topnav-muted);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.top-nav-avatar:hover {
+  opacity: 0.75;
+}
