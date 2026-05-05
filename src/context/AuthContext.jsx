@@ -91,6 +91,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isAdmin: user?.is_admin === true,
     isVerified: user?.is_verified === true,
+    isTasker: user?.is_tasker === true,
   }), [user, loading, error]);
 
   return (

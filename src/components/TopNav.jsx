@@ -1,13 +1,20 @@
-import { Bell, Search, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, Bell, Sun, Moon } from 'lucide-react'
 import '../assets/TopNav.css'
+import { useNavigate } from 'react-router-dom'
 
-const TopNav = ({ currentSection, darkMode, toggleDarkMode, user, notifCount = 0 }) => {
+const TopNav = ({ currentSection, inline,darkMode, toggleDarkMode, user, notifCount = 0 }) => {
+  const navigate = useNavigate()
+
   return (
     <header className="top-nav">
-
-      <div className="top-nav-breadcrumb">
-        <span className="top-nav-section">{currentSection}</span>
-      </div>
+      {inline 
+        ?<button className="td-back" onClick={() => navigate(-1)}>
+          <ArrowLeft size={14} strokeWidth={1.8} />
+        </button>
+        :<div className="top-nav-breadcrumb">
+          <span className="top-nav-section">{currentSection}</span>
+        </div>
+      }
 
       <div className="top-nav-controls">
 
@@ -18,14 +25,6 @@ const TopNav = ({ currentSection, darkMode, toggleDarkMode, user, notifCount = 0
         >
           <Bell size={15} strokeWidth={1.8} />
           {notifCount > 0 && <span className="notif-dot" />}
-        </button>
-
-        <button
-          className="top-nav-btn"
-          aria-label="Search"
-          title="Search"
-        >
-          <Search size={15} strokeWidth={1.8} />
         </button>
 
         <div className="top-nav-divider" />

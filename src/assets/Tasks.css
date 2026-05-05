@@ -1,7 +1,7 @@
-/* ── Topshiriqlar.css ─────────────────────────────────────── */
+/* ── Tasks.css ────────────────────────────────────────────── */
 
 :root {
-  --t-font: 'Geist', 'Inter', system-ui, sans-serif;
+  --t-font:      'Geist', 'Inter', system-ui, sans-serif;
   --t-bg:        #ffffff;
   --t-surface:   #f5f5f3;
   --t-border:    rgba(0, 0, 0, 0.08);
@@ -10,6 +10,9 @@
   --t-muted:     #888888;
   --t-subtle:    #bbbbbb;
   --t-hover:     #f0f0ee;
+  --t-radius:    10px;
+  --t-radius-sm: 8px;
+  --t-radius-lg: 12px;
 }
 
 .dark {
@@ -23,14 +26,17 @@
   --t-hover:     #222222;
 }
 
+/* ── Root container ─────────────────────────────────────── */
+
 .topshiriqlar {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 0 15px 0 15px;
+  padding: 0 15px;
   font-family: var(--t-font);
+  width: 100%;
+  box-sizing: border-box;
 }
-
 
 /* ── Toolbar ────────────────────────────────────────────── */
 
@@ -60,7 +66,7 @@
   width: 100%;
   height: 34px;
   padding: 0 10px 0 32px;
-  border-radius: 9px;
+  border-radius: var(--t-radius);
   border: 0.5px solid var(--t-border);
   background: var(--t-bg);
   font-size: 13px;
@@ -68,16 +74,22 @@
   color: var(--t-text);
   outline: none;
   transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 
-.t-search:focus { border-color: var(--t-border-md); }
+.t-search::placeholder { color: var(--t-subtle); }
+.t-search:focus        { border-color: var(--t-border-md); }
 
-.t-filter-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.t-filter-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
 
 .t-fchip {
   height: 30px;
   padding: 0 11px;
-  border-radius: 8px;
+  border-radius: var(--t-radius-sm);
   border: 0.5px solid var(--t-border);
   background: var(--t-bg);
   font-size: 12px;
@@ -94,7 +106,7 @@
 .t-add-btn {
   height: 34px;
   padding: 0 14px;
-  border-radius: 9px;
+  border-radius: var(--t-radius);
   border: 0.5px solid var(--t-border-md);
   background: var(--t-bg);
   font-size: 13px;
@@ -111,15 +123,17 @@
 
 .t-add-btn:hover { background: var(--t-text); color: var(--t-bg); }
 
-
 /* ── Group Selector ─────────────────────────────────────── */
 
-.t-gs-wrap { position: relative; display: inline-block; }
+.t-gs-wrap {
+  position: relative;
+  display: inline-block;
+}
 
 .t-gs-trigger {
   height: 36px;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: var(--t-radius);
   border: 0.5px solid var(--t-border);
   background: var(--t-bg);
   display: flex;
@@ -175,7 +189,7 @@
   left: 0;
   background: var(--t-bg);
   border: 0.5px solid var(--t-border);
-  border-radius: 12px;
+  border-radius: var(--t-radius-lg);
   padding: 6px;
   z-index: 100;
   min-width: 290px;
@@ -183,8 +197,9 @@
   overflow-y: auto;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   list-style: none;
+  margin: 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,.1) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
 }
 
 .t-gs-opt {
@@ -192,7 +207,7 @@
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  border-radius: 8px;
+  border-radius: var(--t-radius-sm);
   cursor: pointer;
   transition: background 0.12s;
 }
@@ -220,7 +235,6 @@
   white-space: nowrap;
 }
 
-
 /* ── Stats ──────────────────────────────────────────────── */
 
 .t-stats {
@@ -232,11 +246,15 @@
 .t-stat {
   background: var(--t-bg);
   border: 0.5px solid var(--t-border);
-  border-radius: 10px;
+  border-radius: var(--t-radius);
   padding: 10px 12px;
 }
 
-.t-stat-lbl { font-size: 10.5px; color: var(--t-muted); margin-bottom: 3px; }
+.t-stat-lbl {
+  font-size: 10.5px;
+  color: var(--t-muted);
+  margin-bottom: 3px;
+}
 
 .t-stat-val {
   font-size: 19px;
@@ -249,14 +267,25 @@
 
 .t-stat.urgent .t-stat-val { color: #A32D2D; }
 
-.t-stat-pct { font-size: 11px; font-weight: 400; color: var(--t-subtle); }
-
+.t-stat-pct {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--t-subtle);
+}
 
 /* ── Sections ───────────────────────────────────────────── */
 
-.t-sections { display: flex; flex-direction: column; gap: 20px; }
+.t-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
-.t-section { display: flex; flex-direction: column; gap: 7px; }
+.t-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
 
 .t-sec-title {
   font-size: 10.5px;
@@ -280,15 +309,75 @@
 .t-sec-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .t-sec-icon { font-size: 13px; }
 
-.t-task-list { display: flex; flex-direction: column; gap: 5px; }
+.t-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* ── Empty & loading states ─────────────────────────────── */
 
 .t-empty {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 48px 20px;
   color: var(--t-subtle);
   font-size: 13px;
+  text-align: center;
 }
 
+.t-error { color: #A32D2D; }
+
+@keyframes t-spin    { to { transform: rotate(360deg); } }
+@keyframes t-shimmer { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+.t-spin { animation: t-spin 0.8s linear infinite; display: inline-block; }
+
+/* ── Skeleton ───────────────────────────────────────────── */
+
+.t-skel-line {
+  border-radius: 4px;
+  background: var(--t-surface);
+  animation: t-shimmer 1.4s ease-in-out infinite;
+  height: 12px;
+}
+
+.t-skel-line.wide   { width: 75%; }
+.t-skel-line.short  { width: 55px; }
+.t-skel-line.xshort { width: 38px; }
+
+.t-skel-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--t-surface);
+  flex-shrink: 0;
+  animation: t-shimmer 1.4s ease-in-out infinite;
+}
+
+.t-skel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.t-skel-meta { display: flex; gap: 6px; }
+
+.t-skel-avt {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--t-surface);
+  flex-shrink: 0;
+  animation: t-shimmer 1.4s ease-in-out infinite;
+}
+
+.t-task.t-skeleton .t-skel-circle { animation-delay: 0ms;   }
+.t-task.t-skeleton .t-skel-body   { animation-delay: 80ms;  }
+.t-task.t-skeleton .t-skel-avt    { animation-delay: 160ms; }
 
 /* ── Task card ──────────────────────────────────────────── */
 
@@ -303,10 +392,11 @@
   transition: border-color 0.15s, opacity 0.15s;
 }
 
-.t-task:hover { border-color: var(--t-border-md); }
-.t-task.done  { opacity: 0.45; }
-
-.t-task:hover .t-actions { opacity: 1; }
+.t-task:hover              { border-color: var(--t-border-md); }
+.t-task.done               { opacity: 0.45; }
+.t-task:hover .t-actions   { opacity: 1; }
+.t-task.overdue            { border-color: rgba(163, 45, 45, 0.2); }
+.t-task.overdue:hover      { border-color: rgba(163, 45, 45, 0.35); }
 
 .t-check {
   width: 18px;
@@ -325,6 +415,13 @@
 }
 
 .t-check.on { background: var(--t-text); border-color: transparent; }
+
+/* Spacer replacing check button in list-only view */
+.t-check-placeholder {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
 
 .t-tbody { flex: 1; min-width: 0; }
 
@@ -347,7 +444,8 @@
   flex-wrap: wrap;
 }
 
-/* Badges */
+/* ── Badges ─────────────────────────────────────────────── */
+
 .t-badge {
   display: inline-flex;
   align-items: center;
@@ -366,6 +464,8 @@
 .badge-prog { background: #E6F1FB; color: #185FA5; }
 .badge-done { background: #E1F5EE; color: #0F6E56; }
 
+.dark .badge-todo { background: #2a2a2a; color: #888; }
+
 .t-grp-badge {
   display: inline-flex;
   align-items: center;
@@ -377,8 +477,10 @@
   color: #fff;
 }
 
-.t-due       { font-size: 11px; color: var(--t-subtle); }
-.t-due.over  { color: #A32D2D; }
+.t-due      { font-size: 11px; color: var(--t-subtle); }
+.t-due.over { color: #A32D2D; }
+
+/* ── Avatar ─────────────────────────────────────────────── */
 
 .t-avt {
   width: 22px;
@@ -395,6 +497,8 @@
   flex-shrink: 0;
   margin-top: 1px;
 }
+
+/* ── Task actions ───────────────────────────────────────── */
 
 .t-actions {
   display: flex;
@@ -422,7 +526,6 @@
 .t-act-btn:hover     { background: var(--t-hover); color: var(--t-text); }
 .t-act-btn.del:hover { background: #FCEBEB; color: #A32D2D; border-color: transparent; }
 
-
 /* ── Modal ──────────────────────────────────────────────── */
 
 .t-backdrop {
@@ -433,8 +536,16 @@
   align-items: center;
   justify-content: center;
   z-index: 200;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
+
+.t-selector{
+  display: flex;
+  align-items: center;
+  gap:5px;
+}
 .t-modal {
   background: var(--t-bg);
   border-radius: 16px;
@@ -446,6 +557,12 @@
   flex-direction: column;
   gap: 4px;
   font-family: var(--t-font);
+  animation: t-modal-in 0.18s ease;
+}
+
+@keyframes t-modal-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)  scale(1);    }
 }
 
 .t-modal-hdr {
@@ -461,7 +578,7 @@
 .t-modal-close {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: var(--t-radius-sm);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -487,7 +604,7 @@
 .t-mselect {
   width: 100%;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--t-radius-sm);
   border: 0.5px solid var(--t-border-md);
   font-size: 13px;
   font-family: var(--t-font);
@@ -495,10 +612,21 @@
   background: var(--t-bg);
   outline: none;
   transition: border-color 0.15s;
+  box-sizing: border-box;
 }
+
+.t-minput::placeholder { color: var(--t-subtle); }
 
 .t-minput:focus,
 .t-mselect:focus { border-color: rgba(0, 0, 0, 0.3); }
+
+.dark .t-minput:focus,
+.dark .t-mselect:focus { border-color: rgba(255, 255, 255, 0.3); }
+
+.t-mselect option {
+  background: var(--t-bg);
+  color: var(--t-text);
+}
 
 .t-mgrid {
   display: grid;
@@ -523,7 +651,7 @@
 .t-mbtn {
   height: 32px;
   padding: 0 16px;
-  border-radius: 8px;
+  border-radius: var(--t-radius-sm);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -545,8 +673,8 @@
   border: none;
 }
 
-.t-mbtn.save:hover { opacity: 0.85; }
-
+.t-mbtn.save:hover    { opacity: 0.85; }
+.t-mbtn.save:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Mobile ─────────────────────────────────────────────── */
 
@@ -556,4 +684,5 @@
   .t-stats       { grid-template-columns: repeat(2, 1fr); }
   .t-gs-dname    { max-width: 140px; }
   .t-mgrid       { grid-template-columns: 1fr; }
+  .t-actions     { opacity: 1; }
 }
