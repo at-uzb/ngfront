@@ -1,0 +1,178 @@
+/* MediaCarousel.css */
+
+.mc-root {
+  position: relative;
+  width: 100%;
+  background: var(--t-surface);
+  border-top: 0.5px solid var(--t-border);
+  border-bottom: 0.5px solid var(--t-border);
+  overflow: hidden;
+  user-select: none;
+  border-radius: 15px;
+  padding: 5px;
+}
+
+/* ── 3-item strip ─────────────────────────────────────────── */
+.mc-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  cursor: grab;
+  transition: transform 0.06s ease;
+}
+.mc-strip.dragging { cursor: grabbing; transition: none; }
+
+/* ── Each item cell ───────────────────────────────────────── */
+.mc-item {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--t-bg);
+  position: relative;
+}
+
+.mc-item-pad {
+  width: 100%; height: 100%;
+  background: var(--t-surface);
+}
+
+.mc-item-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+  transition: transform 0.2s ease;
+}
+.mc-item-img:hover { transform: scale(1.03); }
+
+.mc-item-file {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  color: var(--t-muted); font-size: 11px;
+  cursor: pointer; text-align: center; padding: 8px;
+  box-sizing: border-box;
+}
+.mc-item-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90%; }
+.mc-item-file:hover { color: var(--t-text); background: var(--t-hover); }
+
+/* ── Video ────────────────────────────────────────────────── */
+.mc-video-wrap {
+  width: 100%; height: 100%;
+  position: relative;
+  cursor: pointer;
+  background: #000;
+}
+
+.mc-video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mc-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.28);
+  transition: background 0.15s;
+}
+.mc-video-wrap:hover .mc-play-overlay { background: rgba(0,0,0,0.4); }
+
+/* video bottom bar */
+.mc-vid-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 6px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+}
+.mc-vid-progress {
+  flex: 1; height: 3px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.mc-vid-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 2px;
+  pointer-events: none;
+  transition: width 0.1s linear;
+}
+.mc-vid-mute {
+  width: 18px; height: 18px;
+  border: none; background: none; padding: 0;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.mc-vid-mute:hover { color: #fff; }
+
+/* ── Arrows ───────────────────────────────────────────────── */
+.mc-arrow {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.38);
+  color: #fff; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: background 0.15s;
+  z-index: 3;
+}
+.mc-arrow:hover { background: rgba(0,0,0,0.6); }
+.mc-arrow.left  { left: 6px; }
+.mc-arrow.right { right: 6px; }
+
+/* ── Top-right pill bar ───────────────────────────────────── */
+.mc-topbar {
+  position: absolute;
+  top: 6px; right: 6px;
+  display: flex; align-items: center; gap: 4px;
+  z-index: 3;
+}
+.mc-counter {
+  height: 18px; padding: 0 7px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.4);
+  color: #fff; font-size: 10px; font-weight: 500;
+  display: inline-flex; align-items: center;
+  backdrop-filter: blur(6px);
+}
+.mc-upload-btn {
+  height: 22px; padding: 0 8px;
+  border-radius: 20px;
+  border: 0.5px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.4);
+  color: #fff; font-size: 10.5px;
+  font-family: var(--t-font);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 3px;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s;
+}
+.mc-upload-btn:hover    { background: rgba(0,0,0,0.62); }
+.mc-upload-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Dots ─────────────────────────────────────────────────── */
+.mc-dots {
+  position: absolute;
+  bottom: 5px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; align-items: center;
+  z-index: 3;
+}
+.mc-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  border: none; padding: 0; cursor: pointer;
+  background: rgba(255,255,255,0.4);
+  transition: background 0.15s, transform 0.15s;
+}
+.mc-dot.active { background: #fff; transform: scale(1.4); }
+
+/* ── Spin ─────────────────────────────────────────────────── */
+.mc-spin { animation: mc-spin 0.7s linear infinite; }
+@keyframes mc-spin { to { transform: rotate(360deg); } }
