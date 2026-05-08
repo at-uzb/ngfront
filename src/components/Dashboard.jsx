@@ -4,12 +4,14 @@ import {
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 
-import { GROUP_MAPPING } from '../constants/groups'
+import { useGroupStore } from '../hooks/useGroupStore'
 import GroupSelector from './GroupSelector'
 import '../assets/Dashboard.css'
 
 const Dashboard = () => {
-  const [selectedGroup, setSelectedGroup] = useState('ALL')
+
+  const { selectedGroup, loading: groupLoading } = useGroupStore()
+
   const [dashboardData, setDashboardData] = useState({
     stats: {},
     ticketsOverTime: [],
@@ -18,9 +20,8 @@ const Dashboard = () => {
   })
   const [loading, setLoading] = useState(false)
 
-  const generateMockData = (groupCode) => {
+  const generateMockData = (groupId) => {
     const randomFactor = Math.random() * 0.3 + 0.85
-
     return {
       stats: {
         totalActiveTickets: Math.floor(150 * randomFactor),
@@ -37,10 +38,10 @@ const Dashboard = () => {
         { date: 'Iyun',    resolved: Math.floor(38 * randomFactor), created: Math.floor(35 * randomFactor) }
       ],
       pendingTickets: [
-        { id: `${groupCode}-001`, title: 'Topshiriq 1', priority: 'High',   age: '2 kun', assignee: 'Ishchi A' },
-        { id: `${groupCode}-002`, title: 'Topshiriq 2', priority: 'Medium', age: '3 kun', assignee: 'Ishchi B' },
-        { id: `${groupCode}-003`, title: 'Topshiriq 3', priority: 'Low',    age: '5 kun', assignee: 'Ishchi C' },
-        { id: `${groupCode}-004`, title: 'Topshiriq 4', priority: 'High',   age: '1 kun', assignee: 'Ishchi D' }
+        { id: `${groupId}-001`, title: 'Topshiriq 1', priority: 'High',   age: '2 kun', assignee: 'Ishchi A' },
+        { id: `${groupId}-002`, title: 'Topshiriq 2', priority: 'Medium', age: '3 kun', assignee: 'Ishchi B' },
+        { id: `${groupId}-003`, title: 'Topshiriq 3', priority: 'Low',    age: '5 kun', assignee: 'Ishchi C' },
+        { id: `${groupId}-004`, title: 'Topshiriq 4', priority: 'High',   age: '1 kun', assignee: 'Ishchi D' }
       ],
       resolutionByCategory: [
         { name: '1-toifa', resolved: Math.floor(40 * randomFactor), pending: Math.floor(8 * randomFactor) },
@@ -51,17 +52,16 @@ const Dashboard = () => {
     }
   }
 
+  // Re-fetch whenever the selected group changes
   useEffect(() => {
-    fetchDashboardData()
-  }, [selectedGroup])
-
-  const fetchDashboardData = async () => {
+    if (!selectedGroup) return
     setLoading(true)
-    setTimeout(() => {
-      setDashboardData(generateMockData(selectedGroup))
+    const timer = setTimeout(() => {
+      setDashboardData(generateMockData(selectedGroup.id))
       setLoading(false)
     }, 500)
-  }
+    return () => clearTimeout(timer)
+  }, [selectedGroup?.id])
 
   const getPriorityClass = (priority) => {
     switch (priority.toLowerCase()) {
@@ -81,7 +81,7 @@ const Dashboard = () => {
     }
   }
 
-  if (loading) {
+  if (groupLoading || loading) {
     return (
       <div className="dashboard">
         <div className="loading-spinner">
@@ -95,13 +95,10 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
 
-      {/* Group Selector */}
+      {/* Group Selector — no props needed, state lives in the hook */}
       <div className="filter-bar">
         <h3>Xizmatlar bo'yicha:</h3>
-        <GroupSelector
-          selectedGroup={selectedGroup}
-          onGroupChange={setSelectedGroup}
-        />
+        <GroupSelector />
       </div>
 
       {/* Stats Cards */}
@@ -136,7 +133,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Charts Section */}
+      {/* Charts */}
       <div className="charts-grid">
         <div className="chart-card">
           <h3>Vaqt bo'yicha hal qilingan topshiriqlar</h3>

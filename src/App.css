@@ -63,6 +63,11 @@
   overflow: hidden;
 }
 
+.content-area:has(>.tc-page){
+  padding: 50px 0 0 0;
+  overflow: hidden;
+}
+
 .page-container {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;

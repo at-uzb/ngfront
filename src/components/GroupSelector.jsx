@@ -1,45 +1,104 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { GROUP_MAPPING } from '../constants/groups'
+import { ChevronDown, Users, AlertCircle, Loader2, LayoutGrid } from 'lucide-react'
+import { useGroupStore, ALL_GROUP } from '../hooks/useGroupStore'
 import '../assets/GroupSelector.css'
 
-const CODES = Object.keys(GROUP_MAPPING)
+// Derive a readable text color from any bg color (hex, named, or fallback)
+function getContrastColor(bgColor) {
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 1
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = bgColor
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+    // WCAG luminance
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return lum > 128 ? '#1e293b' : '#ffffff'
+  } catch {
+    return '#ffffff'
+  }
+}
 
-const GroupSelector = ({ selectedGroup, onGroupChange }) => {
+// Consistent color per group id (fallback when color is invalid/missing)
+const FALLBACK_COLORS = [
+  '#6366f1', '#0ea5e9', '#10b981', '#f59e0b',
+  '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6',
+]
+
+// Validate any CSS color string (hex, rgb, named, etc.) using canvas
+const _colorCache = new Map()
+function isValidColor(raw) {
+  if (_colorCache.has(raw)) return _colorCache.get(raw)
+  try {
+    const ctx = document.createElement('canvas').getContext('2d')
+    ctx.fillStyle = '#000'
+    ctx.fillStyle = raw
+    const resolved = ctx.fillStyle
+    // If canvas parsed it to something other than black, it's valid
+    // Special-case actual black values so they aren't rejected
+    const isBlack = ['black', '#000', '#000000'].includes(raw.toLowerCase())
+    const valid = isBlack || resolved !== '#000000'
+    _colorCache.set(raw, valid)
+    return valid
+  } catch {
+    return false
+  }
+}
+
+function resolveColor(group, index) {
+  const raw = (group.color ?? '').trim()
+  if (raw && isValidColor(raw)) return raw
+  return FALLBACK_COLORS[index % FALLBACK_COLORS.length]
+}
+
+// Two-letter initials from short_name or name
+function initials(group) {
+  if (group.short_name) return group.short_name.slice(0, 2).toUpperCase()
+  return group.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+export default function GroupSelector() {
+  const { groups, selectedId, selectedGroup, loading, error, setSelectedId } = useGroupStore()
+
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const containerRef = useRef(null)
   const listRef = useRef(null)
-  const current = GROUP_MAPPING[selectedGroup]
 
+  // Close on outside click
   useEffect(() => {
-    const handleOutside = (e) => {
+    const handler = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false)
       }
     }
-    document.addEventListener('pointerdown', handleOutside)
-    return () => document.removeEventListener('pointerdown', handleOutside)
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
   }, [])
 
+  // Scroll focused item into view
   useEffect(() => {
     if (!isOpen || focusedIndex < 0) return
-    const item = listRef.current?.children[focusedIndex]
-    item?.scrollIntoView({ block: 'nearest' })
+    listRef.current?.children[focusedIndex]?.scrollIntoView({ block: 'nearest' })
   }, [focusedIndex, isOpen])
 
+  // Restore focused index when opening
   useEffect(() => {
-    if (isOpen) setFocusedIndex(CODES.indexOf(selectedGroup))
-  }, [isOpen, selectedGroup])
+    if (isOpen) {
+      const idx = groups.findIndex((g) => g.id === selectedId)
+      setFocusedIndex(idx >= 0 ? idx : 0)
+    }
+  }, [isOpen, selectedId, groups])
 
-  const handleSelect = useCallback((code) => {
-    onGroupChange(code)
+  const handleSelect = useCallback((id) => {
+    setSelectedId(id)
     setIsOpen(false)
-  }, [onGroupChange])
+  }, [setSelectedId])
 
   const handleKeyDown = (e) => {
     if (!isOpen) {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      if (['Enter', ' ', 'ArrowDown'].includes(e.key)) {
         e.preventDefault()
         setIsOpen(true)
       }
@@ -48,7 +107,7 @@ const GroupSelector = ({ selectedGroup, onGroupChange }) => {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setFocusedIndex((i) => Math.min(i + 1, CODES.length - 1))
+        setFocusedIndex((i) => Math.min(i + 1, groups.length - 1))
         break
       case 'ArrowUp':
         e.preventDefault()
@@ -56,7 +115,7 @@ const GroupSelector = ({ selectedGroup, onGroupChange }) => {
         break
       case 'Enter':
         e.preventDefault()
-        if (focusedIndex >= 0) handleSelect(CODES[focusedIndex])
+        if (focusedIndex >= 0) handleSelect(groups[focusedIndex].id)
         break
       case 'Escape':
       case 'Tab':
@@ -67,30 +126,71 @@ const GroupSelector = ({ selectedGroup, onGroupChange }) => {
 
   const listId = 'group-selector-list'
 
+  // ── Loading state
+  if (loading) {
+    return (
+      <div className="group-selector group-selector--loading" aria-busy="true">
+        <Loader2 size={15} className="group-selector__spinner" aria-hidden="true" />
+        <span className="group-selector__loading-text">Yuklanmoqda…</span>
+      </div>
+    )
+  }
+
+  // ── Error state
+  if (error || groups.length === 0) {
+    return (
+      <div className="group-selector group-selector--error" role="alert">
+        <AlertCircle size={15} aria-hidden="true" />
+        <span>{error ?? 'Guruhlar topilmadi'}</span>
+      </div>
+    )
+  }
+
+  const selColor = selectedGroup
+    ? resolveColor(selectedGroup, groups.findIndex((g) => g.id === selectedGroup.id))
+    : '#6366f1'
+  const selContrast = getContrastColor(selColor)
+
   return (
     <div className="group-selector" ref={containerRef}>
       <button
         className="group-selector__trigger"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => setIsOpen((p) => !p)}
         onKeyDown={handleKeyDown}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={listId}
         aria-activedescendant={
-          isOpen && focusedIndex >= 0 ? `gs-opt-${CODES[focusedIndex]}` : undefined
+          isOpen && focusedIndex >= 0 ? `gs-opt-${groups[focusedIndex]?.id}` : undefined
         }
-        style={{ '--group-color': current.color }}
+        aria-label={selectedGroup ? `Tanlangan guruh: ${selectedGroup.name}` : 'Guruh tanlang'}
+        style={{ '--group-color': selColor }}
       >
-        <span className="group-selector__icon">{current.icon}</span>
-        <span className="group-selector__code" style={{ backgroundColor: current.color }}>
-          {current.name}
+        {/* Avatar pill */}
+        <span
+          className="group-selector__avatar"
+          style={{ background: selColor, color: selContrast }}
+          aria-hidden="true"
+        >
+          {selectedGroup?.id === 'ALL'
+            ? <LayoutGrid size={14} />
+            : selectedGroup ? initials(selectedGroup) : <Users size={13} />}
         </span>
-        <span className="group-selector__display-name">{current.displayName}</span>
 
-        {/* Lucide chevron — replaces the ▾ character */}
+        <span className="group-selector__info">
+          <span className="group-selector__name">
+            {selectedGroup?.name ?? 'Guruh tanlang'}
+          </span>
+          {selectedGroup && selectedGroup.admin_count !== null && (
+            <span className="group-selector__meta">
+              {selectedGroup.admin_count} admin
+            </span>
+          )}
+        </span>
+
         <ChevronDown
           className={`group-selector__chevron${isOpen ? ' open' : ''}`}
-          size={16}
+          size={15}
           strokeWidth={2}
           aria-hidden="true"
         />
@@ -103,28 +203,59 @@ const GroupSelector = ({ selectedGroup, onGroupChange }) => {
           role="listbox"
           ref={listRef}
           onKeyDown={handleKeyDown}
+          aria-label="Guruhlar ro'yxati"
         >
-          {CODES.map((code, index) => {
-            const group = GROUP_MAPPING[code]
-            const isSelected = selectedGroup === code
+          {groups.map((group, index) => {
+            const color = resolveColor(group, index)
+            const contrast = getContrastColor(color)
+            const isSelected = group.id === selectedId
+            const isFocused = index === focusedIndex
             return (
               <li
-                key={code}
-                id={`gs-opt-${code}`}
-                className={`group-selector__option${isSelected ? ' selected' : ''}`}
+                key={group.id}
+                id={`gs-opt-${group.id}`}
+                className={[
+                  'group-selector__option',
+                  isSelected ? 'selected' : '',
+                  isFocused ? 'focused' : '',
+                ].join(' ').trim()}
                 role="option"
                 aria-selected={isSelected}
-                onClick={() => handleSelect(code)}
+                onClick={() => handleSelect(group.id)}
                 onMouseEnter={() => setFocusedIndex(index)}
               >
-                <span className="group-selector__option-icon">{group.icon}</span>
                 <span
-                  className="group-selector__option-code"
-                  style={{ backgroundColor: group.color }}
+                  className="group-selector__option-avatar"
+                  style={{ background: color, color: contrast }}
+                  aria-hidden="true"
                 >
-                  {group.name}
+                  {group.id === 'ALL' ? <LayoutGrid size={13} /> : initials(group)}
                 </span>
-                <span className="group-selector__option-label">{group.displayName}</span>
+                <span className="group-selector__option-body">
+                  <span className="group-selector__option-name">{group.name}</span>
+                  <span className="group-selector__option-sub">
+                    {group.id !== 'ALL' && (
+                      <span
+                        className="group-selector__option-badge"
+                        style={{ background: color + '22', color }}
+                      >
+                        {group.short_name}
+                      </span>
+                    )}
+                    {group.admin_count !== null && (
+                      <span className="group-selector__option-admins">
+                        {group.admin_count} admin
+                      </span>
+                    )}
+                  </span>
+                </span>
+                {isSelected && (
+                  <span className="group-selector__check" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                )}
               </li>
             )
           })}
@@ -133,5 +264,3 @@ const GroupSelector = ({ selectedGroup, onGroupChange }) => {
     </div>
   )
 }
-
-export default GroupSelector
