@@ -175,7 +175,7 @@ export default function Tasks() {
         >
           <SlidersHorizontal size={14} strokeWidth={1.8} />
         </button>
-        {canAdd && (
+        {isAdmin && (
         <button className="t-add-btn" onClick={handleExport} disabled={exportLoading}>
           {exportLoading
             ? <Loader2 size={13} strokeWidth={2} className="t-spin" />

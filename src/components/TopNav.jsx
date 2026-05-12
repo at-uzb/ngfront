@@ -8,7 +8,7 @@ const TopNav = ({ currentSection, inline,darkMode, toggleDarkMode, user, notifCo
   return (
     <header className="top-nav">
       {inline 
-        ?<button className="td-back" onClick={() => navigate('/tasks/')}>
+        ?<button className="td-back" onClick={() => navigate('/tasks')}>
           <ArrowLeft size={14} strokeWidth={1.8} />
         </button>
         :<div className="top-nav-breadcrumb">

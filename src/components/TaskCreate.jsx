@@ -15,7 +15,7 @@ const PRIORITIES = [
 ]
 
 // ── Component ────────────────────────────────────────────────
-export default function TaskCreate( {toggleInline} ) {
+export default function TaskCreate( ) {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
@@ -119,10 +119,7 @@ export default function TaskCreate( {toggleInline} ) {
       setSaving(false)
     }
   }
-  useEffect(() => {
-    toggleInline?.()
-    return () => toggleInline?.()
-  }, [])
+  
   // ── Render ───────────────────────────────────────────────
   return (
     <div className="tc-page">

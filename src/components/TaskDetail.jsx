@@ -76,7 +76,7 @@ const PRIORITY_MAP = {
   low:    { label: 'Past',   cls: 'badge-low',  dot: '#6EE7B7' },
 }
 
-export default function TaskDetail({ toggleInline }) {
+export default function TaskDetail() {
   const { id }      = useParams()
   const navigate    = useNavigate()
   const { isAdmin } = useAuth()
@@ -98,7 +98,6 @@ export default function TaskDetail({ toggleInline }) {
   const cmtFileRef    = useRef(null)
 
   useEffect(() => {
-    toggleInline?.()
     const load = async () => {
       setLoading(true); setError(null)
       try {
@@ -119,7 +118,6 @@ export default function TaskDetail({ toggleInline }) {
       } finally { setLoading(false) }
     }
     load()
-    return () => toggleInline?.()
   }, [id])
 
   const handleSave = async () => {
