@@ -1,0 +1,67 @@
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  animation: fadeUp 0.4s ease both;
+}
+
+.loading-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 28px;
+}
+
+.bar {
+  width: 5px;
+  border-radius: 3px;
+  background: var(--color-text-primary, #111);
+}
+
+.bar-1 { animation: bar1 1.2s ease-in-out infinite; }
+.bar-2 { animation: bar2 1.2s ease-in-out infinite 0.15s; }
+.bar-3 { animation: bar3 1.2s ease-in-out infinite 0.3s; }
+.bar-4 { animation: bar4 1.2s ease-in-out infinite 0.45s; }
+
+.loading-wordmark {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--color-text-primary, #111);
+}
+
+.loading-text {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bar1 {
+  0%, 100% { height: 12px; margin-top: 12px; }
+  50%       { height: 24px; margin-top: 0; }
+}
+@keyframes bar2 {
+  0%, 100% { height: 20px; margin-top: 4px; }
+  50%       { height: 10px; margin-top: 14px; }
+}
+@keyframes bar3 {
+  0%, 100% { height: 8px;  margin-top: 16px; }
+  50%       { height: 22px; margin-top: 2px; }
+}
+@keyframes bar4 {
+  0%, 100% { height: 16px; margin-top: 8px; }
+  50%       { height: 6px;  margin-top: 18px; }
+}

@@ -4,7 +4,6 @@ import {
   CheckSquare,
   MessageSquare,
   User,
-  Settings,
   MoreHorizontal,
 } from 'lucide-react'
 import { useRole } from '../hooks/useRole'
@@ -17,14 +16,14 @@ const MAIN_ITEMS = [
 ]
 
 const ACCOUNT_ITEMS = [
-  { path: '/profile',  name: 'Profil',      icon: User,     permission: 'viewProfile'  }
+  { path: '/profile', name: 'Profil', icon: User, permission: 'viewProfile' },
 ]
 
-export default function LeftNav({ updateSection, user }) {
+export default function LeftNav({ user }) {
   const { can } = useRole()
 
-  const visibleMain    = MAIN_ITEMS.filter(item => can(item.permission))
-  const visibleAccount = ACCOUNT_ITEMS.filter(item => can(item.permission))
+  const visibleMain    = MAIN_ITEMS.filter((item) => can(item.permission))
+  const visibleAccount = ACCOUNT_ITEMS.filter((item) => can(item.permission))
   const allVisible     = [...visibleMain, ...visibleAccount]
 
   return (
@@ -54,7 +53,6 @@ export default function LeftNav({ updateSection, user }) {
                   <NavLink
                     to={path}
                     className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-                    onClick={() => updateSection(name)}
                   >
                     <Icon size={15} strokeWidth={1.8} />
                     <span className="nav-text">{name}</span>
@@ -77,7 +75,6 @@ export default function LeftNav({ updateSection, user }) {
                   <NavLink
                     to={path}
                     className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-                    onClick={() => updateSection(name)}
                   >
                     <Icon size={15} strokeWidth={1.8} />
                     <span className="nav-text">{name}</span>
@@ -101,6 +98,7 @@ export default function LeftNav({ updateSection, user }) {
           </div>
           <MoreHorizontal size={14} color="#bbb" />
         </div>
+
       </nav>
 
       {/* ── Mobile Bottom Bar ── */}
@@ -111,7 +109,6 @@ export default function LeftNav({ updateSection, user }) {
               <NavLink
                 to={path}
                 className={({ isActive }) => `bottom-nav-link${isActive ? ' active' : ''}`}
-                onClick={() => updateSection(name)}
               >
                 <Icon size={18} strokeWidth={1.7} />
                 <span className="bottom-nav-label">{name}</span>

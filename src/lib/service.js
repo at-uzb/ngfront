@@ -1,30 +1,6 @@
 import api, { clearAuthStorage } from './api';
 
-// Non-HttpOnly flag cookie your backend sets alongside the HttpOnly auth cookies.
-// JS can read this — it contains no sensitive data, just a presence signal.
-const SESSION_FLAG_COOKIE = 'is_logged_in';
-
 class AuthService {
-  // ─── Cookie Helpers ────────────────────────────────────────────────────────
-
-  /**
-   * Check for the lightweight session flag cookie set by the backend.
-   * Since the actual JWT is HttpOnly, this is the only JS-readable signal
-   * that a session exists without making a network request.
-   */
-  hasSessionCookie() {
-    return document.cookie
-      .split(';')
-      .some((c) => c.trim().startsWith(`${SESSION_FLAG_COOKIE}=`));
-  }
-
-  /**
-   * Clear the session flag cookie client-side on logout.
-   * The HttpOnly JWT cookies are cleared by the backend logout endpoint.
-   */
-  clearSessionCookie() {
-    document.cookie = `${SESSION_FLAG_COOKIE}=;expires=${new Date(0).toUTCString()};path=/`;
-  }
 
   // ─── Auth Actions ──────────────────────────────────────────────────────────
 
@@ -63,12 +39,11 @@ class AuthService {
       await api.post('/users/logout/');
     } catch (error) {
       // Log but don't re-throw — local cleanup must always succeed
-      // regardless of whether the server-side call worked
       console.error('Logout endpoint failed:', error);
     } finally {
-      // ✅ Always runs — clears auth keys surgically, never the whole storage
+      // Always runs regardless of API success/failure
       clearAuthStorage();
-      this.clearSessionCookie();
+      this._clearSessionCookie();
     }
   }
 
@@ -84,10 +59,17 @@ class AuthService {
     }
   }
 
+  // ─── Cookie Helpers ────────────────────────────────────────────────────────
+
+  // Clears the JS-readable session flag cookie set by the backend.
+  // The HttpOnly JWT cookies are cleared by the backend logout endpoint.
+  _clearSessionCookie() {
+    document.cookie = `is_logged_in=;expires=${new Date(0).toUTCString()};path=/`;
+  }
+
   // ─── Error Normalizer ──────────────────────────────────────────────────────
 
   handleError(error) {
-    // Preserve the stack trace by extending a real Error object
     const message =
       error.response?.data?.message ||
       error.response?.data?.detail ||
