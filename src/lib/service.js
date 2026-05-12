@@ -1,11 +1,37 @@
-import api from './api';
+import api, { clearAuthStorage } from './api';
+
+// Non-HttpOnly flag cookie your backend sets alongside the HttpOnly auth cookies.
+// JS can read this — it contains no sensitive data, just a presence signal.
+const SESSION_FLAG_COOKIE = 'is_logged_in';
 
 class AuthService {
+  // ─── Cookie Helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Check for the lightweight session flag cookie set by the backend.
+   * Since the actual JWT is HttpOnly, this is the only JS-readable signal
+   * that a session exists without making a network request.
+   */
+  hasSessionCookie() {
+    return document.cookie
+      .split(';')
+      .some((c) => c.trim().startsWith(`${SESSION_FLAG_COOKIE}=`));
+  }
+
+  /**
+   * Clear the session flag cookie client-side on logout.
+   * The HttpOnly JWT cookies are cleared by the backend logout endpoint.
+   */
+  clearSessionCookie() {
+    document.cookie = `${SESSION_FLAG_COOKIE}=;expires=${new Date(0).toUTCString()};path=/`;
+  }
+
+  // ─── Auth Actions ──────────────────────────────────────────────────────────
+
   async login(credentials) {
-    console.log(credentials)
     try {
       const response = await api.post('/users/login/', credentials);
-      if (response.data && response.data.user) {
+      if (response.data?.user) {
         localStorage.setItem('user', JSON.stringify(response.data.user));
       }
       return response.data;
@@ -34,59 +60,45 @@ class AuthService {
 
   async logout() {
     try {
-      // Call logout endpoint to clear HttpOnly cookies
-      const response = await api.post('/users/logout/');
-      
-      // Clear local storage
-      localStorage.removeItem('user');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      
-      // Clear any non-HttpOnly cookies (just in case)
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-      
-      return response.data;
+      await api.post('/users/logout/');
     } catch (error) {
-      console.error('Logout API call failed:', error);
-      // Still clear local storage even if API call fails
-      localStorage.removeItem('user');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      throw this.handleError(error);
+      // Log but don't re-throw — local cleanup must always succeed
+      // regardless of whether the server-side call worked
+      console.error('Logout endpoint failed:', error);
+    } finally {
+      // ✅ Always runs — clears auth keys surgically, never the whole storage
+      clearAuthStorage();
+      this.clearSessionCookie();
     }
   }
 
-  handleError(error) {
-    if (error.response) {
-      return {
-        status: error.response.status,
-        message: error.response.data?.message || error.response.data?.detail || 'An error occurred',
-        data: error.response.data,
-      };
-    }
-    return {
-      message: error.message || 'Network error',
-    };
-  }
-
-  isAuthenticated() {
-    return !!localStorage.getItem('user');
-  }
+  // ─── User Helpers ──────────────────────────────────────────────────────────
 
   getUser() {
     const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        return JSON.parse(userStr);
-      } catch (e) {
-        return null;
-      }
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch {
+      return null;
     }
-    return null;
+  }
+
+  // ─── Error Normalizer ──────────────────────────────────────────────────────
+
+  handleError(error) {
+    // Preserve the stack trace by extending a real Error object
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.detail ||
+      error.message ||
+      'An unexpected error occurred';
+
+    const normalized = new Error(message);
+    normalized.status = error.response?.status ?? null;
+    normalized.data = error.response?.data ?? null;
+
+    return normalized;
   }
 }
 
