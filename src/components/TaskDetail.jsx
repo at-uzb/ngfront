@@ -46,13 +46,20 @@ function Avatar({ src, name, size = 32 }) {
   )
 }
 
+const UZ_MONTHS = [
+  'yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun',
+  'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr',
+]
 
 function fmtDate(iso) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('uz-UZ', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+  const d = new Date(iso)
+  const day   = d.getDate()
+  const month = UZ_MONTHS[d.getMonth()]
+  const year  = d.getFullYear()
+  const hh    = String(d.getHours()).padStart(2, '0')
+  const mm    = String(d.getMinutes()).padStart(2, '0')
+  return `${day} ${month} ${year}, ${hh}:${mm}`
 }
 
 function timeAgo(iso) {
@@ -93,6 +100,8 @@ export default function TaskDetail() {
   const [uploading,   setUploading]   = useState(false)
   const [lightbox,    setLightbox]    = useState(null)
   const [cmtFiles,    setCmtFiles]    = useState([])
+  const [finishing,   setFinishing]   = useState(false)
+  const [confirmDone, setConfirmDone] = useState(false)
 
   const commentEndRef = useRef(null)
   const cmtFileRef    = useRef(null)
@@ -155,37 +164,39 @@ export default function TaskDetail() {
   }
 
   const handleAddComment = async () => {
-    const txt = commentText.trim();
-    if (!txt && cmtFiles.length === 0) return;
-    
-    setSendingCmt(true);
+    const txt = commentText.trim()
+    if (!txt && cmtFiles.length === 0) return
+
+    setSendingCmt(true)
     try {
-      const fd = new FormData();
-      fd.append('text', txt);
-      
-      // Append all files with the same key 'files'
-      cmtFiles.forEach(file => {
-        fd.append('files', file);
-      });
-      
+      const fd = new FormData()
+      fd.append('text', txt)
+      cmtFiles.forEach(file => { fd.append('files', file) })
+
       const res = await api.post(`/tasks/kts/${id}/comments/`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      setTask(prev => ({ 
-        ...prev, 
-        comments: [...(prev.comments ?? []), res.data] 
-      }));
-      setCommentText('');
-      setCmtFiles([]);
-      setTimeout(() => commentEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      })
+
+      setTask(prev => ({ ...prev, comments: [...(prev.comments ?? []), res.data] }))
+      setCommentText('')
+      setCmtFiles([])
+      setTimeout(() => commentEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (error) {
-      console.error('Comment error:', error);
-      setSaveErr('Izoh qo\'shishda xatolik');
+      console.error('Comment error:', error)
+      setSaveErr("Izoh qo'shishda xatolik")
     } finally {
-      setSendingCmt(false);
+      setSendingCmt(false)
     }
-  };
+  }
+
+  const handleMarkDone = async () => {
+    setFinishing(true); setSaveErr('')
+    try {
+      const res = await api.post(`/tasks/kts/${id}/done/`)
+      setTask(res.data)
+    } catch { setSaveErr('Yakunlashda xatolik yuz berdi') }
+    finally  { setFinishing(false) }
+  }
 
   if (loading) return <DetailSkeleton />
 
@@ -227,7 +238,7 @@ export default function TaskDetail() {
             </span>
           )}
         </div>
-        
+
         <div className="td-hero-title-row">
           {editing ? (
             <input className="td-title-input" value={form.name} autoFocus
@@ -236,21 +247,56 @@ export default function TaskDetail() {
           ) : (
             <h1 className="td-title">{task.name}</h1>
           )}
-          {canEdit && (
-            <div className="td-title-actions">
-              {editing ? (
+
+          <div className="td-title-actions">
+            {/* Edit controls */}
+            {canEdit && (
+              editing ? (
                 <>
                   <button className="td-icon-btn confirm" onClick={handleSave} disabled={saving}>
                     {saving ? <Loader size={13} className="t-spin" /> : <Check size={14} strokeWidth={2.5} />}
                   </button>
-                  <button className="td-icon-btn" onClick={handleCancelEdit}><X size={14} strokeWidth={2.5} /></button>
+                  <button className="td-icon-btn" onClick={handleCancelEdit}>
+                    <X size={14} strokeWidth={2.5} />
+                  </button>
                 </>
               ) : (
-                <button className="td-icon-btn" onClick={() => setEditing(true)}><Pencil size={13} strokeWidth={1.8} /></button>
-              )}
-            </div>
-          )}
+                <button className="td-icon-btn" onClick={() => setEditing(true)}>
+                  <Pencil size={13} strokeWidth={1.8} />
+                </button>
+              )
+            )}
+
+            {/* Yakunlash — only when not editing and not already done */}
+            {canEdit && !editing && task.status !== 'done' && (
+              confirmDone ? (
+                <div className="td-finish-confirm">
+                  <span className="td-finish-confirm-text">Ishonchingiz komilmi?</span>
+                  <button
+                    className="td-finish-btn confirm"
+                    onClick={() => { handleMarkDone(); setConfirmDone(false) }}
+                    disabled={finishing}
+                  >
+                    {finishing
+                      ? <Loader size={13} className="t-spin" />
+                      : <Check size={13} strokeWidth={2.5} />
+                    }
+                    <span className="td-finish-label">Ha</span>
+                  </button>
+                  <button className="td-finish-cancel" onClick={() => setConfirmDone(false)}>
+                    <X size={13} strokeWidth={2} />
+                  </button>
+                </div>
+              ) : (
+                <button className="td-finish-btn" onClick={() => setConfirmDone(true)}>
+                  <Check size={14} strokeWidth={2.5} />
+                  <span className="td-finish-label">Yakunlash</span>
+                </button>
+              )
+            )}
+          </div>
         </div>
+
         {saveErr && <p className="td-save-err">{saveErr}</p>}
 
         {task.created_by && (
@@ -286,9 +332,8 @@ export default function TaskDetail() {
             </div>
           </div>
         )}
-
       </div>
-        
+
       <MediaCarousel
         files={task.media_files}
         onOpen={setLightbox}
@@ -296,6 +341,7 @@ export default function TaskDetail() {
         canUpload={canUpload}
         uploading={uploading}
       />
+
       {/* META */}
       <div className="td-meta-card">
         <div className="td-meta-grid">

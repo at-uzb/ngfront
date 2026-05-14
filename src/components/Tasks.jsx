@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  Search, Plus, FileSpreadsheet, Pencil, Trash2, Loader2,
-  Clock, AlertTriangle, CheckCircle2, Calendar, Inbox,
-  SlidersHorizontal, X,
+  Search, Plus, FileSpreadsheet, Loader2,
+  Clock, AlertTriangle, CheckCircle2, Calendar, Inbox, X,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -10,20 +9,19 @@ import { useGroupStore } from '../hooks/useGroupStore'
 import GroupSelector from './GroupSelector'
 import api from '../lib/api'
 import '../assets/Tasks.css'
+import '../assets/DashboardFilter.css'   // ← shared tab styles
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ADD_TASK_GROUPS = ['NX', 'NGZ', 'NTS']
 
 const TIMELINE_OPTIONS = [
-  { id: '',         label: 'Barchasi'     },
-  { id: 'today',    label: 'Bugun'        },
-  { id: 'tomorrow', label: 'Ertaga'       },
-  { id: 'week',     label: 'Bu hafta'     },
-  { id: 'month',    label: 'Bu oy'        },
-  { id: '2_months', label: '2 oy'         },
-  { id: 'year',     label: 'Bu yil'       },
-  { id: 'past',     label: "O'tib ketgan" },
+  { id: '',             label: 'Barcha vaqt'      },
+  { id: 'last_week',    label: 'Oxirgi hafta'     },
+  { id: 'last_month',   label: 'Oxirgi oy'        },
+  { id: 'past_3_months',label: "So'nggi uch oy"   },
+  { id: 'year',         label: 'Yil'              },
+  { id: 'past',         label: "Muddati o'tgan"   },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -61,7 +59,6 @@ export default function Tasks() {
   const [query,       setQuery]       = useState('')
   const [timeline,    setTimeline]    = useState('')
   const [groupBy,     setGroupBy]     = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
 
   const searchRef = useRef(null)
 
@@ -69,23 +66,16 @@ export default function Tasks() {
     isAdmin || isTasker ||
     ADD_TASK_GROUPS.includes(selectedGroup?.short_name ?? user?.group?.short_name)
 
-  const hasActiveFilters = timeline !== '' || groupBy
-
   const [exportLoading, setExportLoading] = useState(false)
 
   const handleExport = useCallback(async () => {
     const groupShortName = selectedGroup?.short_name
     if (!groupShortName) return
-
     setExportLoading(true)
     try {
       const params = new URLSearchParams({ group_name: groupShortName })
       if (timeline) params.set('timeline', timeline)
-
-      const res = await api.get(`/tasks/xl-tasks/?${params}`, {
-        responseType: 'blob',  // critical — tells axios not to parse binary as text
-      })
-
+      const res = await api.get(`/tasks/xl-tasks/?${params}`, { responseType: 'blob' })
       const url  = URL.createObjectURL(new Blob([res.data]))
       const link = document.createElement('a')
       link.href     = url
@@ -100,6 +90,7 @@ export default function Tasks() {
       setExportLoading(false)
     }
   }, [selectedGroup, timeline])
+
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchTasks = useCallback(async () => {
@@ -108,13 +99,11 @@ export default function Tasks() {
     try {
       const params = new URLSearchParams()
       if (selectedGroup && selectedGroup.id !== 'ALL') params.set('group', selectedGroup.id)
-      if (query)         params.set('search', query)
-      if (timeline)      params.set('timeline', timeline)
-      if (groupBy)       params.set('group_by', 'group')
+      if (query)    params.set('search',   query)
+      if (timeline) params.set('timeline', timeline)
+      if (groupBy)  params.set('group_by', 'group')
 
       const { data } = await api.get(`/tasks/kts/?${params}`)
-
-      // Handle both paginated and non-paginated response shapes
       const payload = data.results ?? data
       setTasks(payload.results ?? [])
       setStats(payload.stats   ?? {})
@@ -141,7 +130,7 @@ export default function Tasks() {
       setTasks(prev => prev.filter(t => t.id !== id))
       setStats(prev => ({ ...prev, total: Math.max(0, (prev.total ?? 0) - 1) }))
     } catch {
-      fetchTasks() // re-sync on failure
+      fetchTasks()
     }
   }
 
@@ -153,7 +142,6 @@ export default function Tasks() {
   const noDeadline = stats.no_deadline ?? 0
   const dueToday   = stats.due_today   ?? 0
 
-  // Backend ordering: deadline_bucket 0 (upcoming) → 1 (past) → 2 (no deadline)
   const upcomingTasks   = tasks.filter(t => !t.is_overdue && t.deadline)
   const overdueTasks    = tasks.filter(t => t.is_overdue)
   const noDeadlineTasks = tasks.filter(t => !t.deadline)
@@ -165,65 +153,43 @@ export default function Tasks() {
   return (
     <div className="topshiriqlar">
 
-      {/* ── Selector + action buttons ── */}
-      <div className="t-selector">
-        <GroupSelector />
-        <button
-          className={`t-icon-btn${showFilters ? ' on' : ''}${hasActiveFilters ? ' has-dot' : ''}`}
-          onClick={() => setShowFilters(p => !p)}
-          title="Filtrlar"
-        >
-          <SlidersHorizontal size={14} strokeWidth={1.8} />
-        </button>
-        {isAdmin && (
-        <button className="t-add-btn" onClick={handleExport} disabled={exportLoading}>
-          {exportLoading
-            ? <Loader2 size={13} strokeWidth={2} className="t-spin" />
-            : <FileSpreadsheet size={13} strokeWidth={2} />
-          }
-          <span className="t-btn-lbl">{exportLoading ? '...' : 'Yuklash'}</span>
-        </button>
-
-        )}
-        {canAdd && (
-          <button className="t-add-btn" onClick={() => navigate('/task/create/')}>
-            <Plus size={13} strokeWidth={2.5} />
-            <span className="t-btn-lbl">Qo'shish</span>
-          </button>
-        )}
-      </div>
-
-      {/* ── Filter panel ── */}
-      {showFilters && (
-        <div className="t-filter-panel">
-          <div className="t-filter-row">
-            <span className="t-filter-lbl">Muddat</span>
-            <div className="t-chips">
-              {TIMELINE_OPTIONS.map(opt => (
-                <button
-                  key={opt.id}
-                  className={`t-fchip${timeline === opt.id ? ' on' : ''}`}
-                  onClick={() => setTimeline(opt.id)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="t-filter-row center">
-            <span className="t-filter-lbl">Ko'rinish</span>
-            <label className="t-toggle-lbl">
-              <input
-                type="checkbox"
-                checked={groupBy}
-                onChange={e => setGroupBy(e.target.checked)}
-              />
-              <span className="t-toggle-track" />
-              Guruh statistikasini ko'rsatish
-            </label>
+      {/* ── Filter card — same df-wrap style as Dashboard ── */}
+      <div className="df-wrap">
+        <div className="df-row">
+          <GroupSelector />
+          <div className="t-filter-actions">
+            {isAdmin && (
+              <button className="t-add-btn" onClick={handleExport} disabled={exportLoading}>
+                {exportLoading
+                  ? <Loader2 size={13} strokeWidth={2} className="t-spin" />
+                  : <FileSpreadsheet size={13} strokeWidth={2} />
+                }
+                <span className="t-btn-lbl">{exportLoading ? '...' : 'Yuklash'}</span>
+              </button>
+            )}
+            {canAdd && (
+              <button className="t-add-btn" onClick={() => navigate('/task/create/')}>
+                <Plus size={13} strokeWidth={2.5} />
+                <span className="t-btn-lbl">Qo'shish</span>
+              </button>
+            )}
           </div>
         </div>
-      )}
+        <div className="df-divider" />
+        <div className="df-row">
+          <div className="df-period-tabs">
+            {TIMELINE_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                className={`df-tab${timeline === opt.id ? ' active' : ''}`}
+                onClick={() => setTimeline(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* ── Stats ── */}
       <div className="t-stats">
@@ -411,9 +377,9 @@ function Section({ title, count, children, variant }) {
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
 function TaskCard({ task, onEdit, onDelete, onClick }) {
-  const isOverdue  = task.is_overdue
-  const isTodayDl  = isSameDay(task.deadline, 0)
-  const isTomorDl  = isSameDay(task.deadline, 1)
+  const isOverdue = task.is_overdue
+  const isTodayDl = isSameDay(task.deadline, 0)
+  const isTomorDl = isSameDay(task.deadline, 1)
 
   const dlLabel = isOverdue  ? `⚠ ${fmtDate(task.deadline)}`
     : isTodayDl ? 'Bugun'
@@ -436,7 +402,6 @@ function TaskCard({ task, onEdit, onDelete, onClick }) {
     >
       <div className="t-task-bar" />
       <div className="t-check-placeholder" />
-
       <div className="t-tbody">
         <div className="t-tname">{task.name}</div>
         <div className="t-tmeta">
@@ -456,29 +421,6 @@ function TaskCard({ task, onEdit, onDelete, onClick }) {
           )}
         </div>
       </div>
-
-      {/* {(task.can_edit || task.can_delete) && (
-        <div className="t-actions" onClick={e => e.stopPropagation()}>
-          {task.can_edit && (
-            <button
-              className="t-act-btn"
-              onClick={() => onEdit(task)}
-              title="Tahrirlash"
-            >
-              <Pencil size={12} strokeWidth={1.8} />
-            </button>
-          )}
-          {task.can_delete && (
-            <button
-              className="t-act-btn del"
-              onClick={e => onDelete(task.id, e)}
-              title="O'chirish"
-            >
-              <Trash2 size={12} strokeWidth={1.8} />
-            </button>
-          )}
-        </div>
-      )} */}
     </div>
   )
 }
