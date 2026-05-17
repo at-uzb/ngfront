@@ -233,8 +233,8 @@
 .td-icon-btn.confirm:hover  { background: rgba(16,185,129,0.12); color: #059669; border-color: rgba(16,185,129,0.3); }
 .td-icon-btn:disabled       { opacity: 0.45; cursor: not-allowed; }
 
-/* ── Finish / Done button ───────────────────────────────── */
-.td-finish-btn {
+/* ── Action buttons (Boshlash / Yakunlash) ──────────────── */
+.td-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -242,32 +242,53 @@
   height: 30px;
   padding: 0 12px;
   border-radius: var(--t-radius-sm);
-  border: 0.5px solid rgba(16,185,129,0.3);
-  background: rgba(16,185,129,0.08);
-  color: #059669;
   font: 500 12px var(--t-font);
   cursor: pointer;
   flex-shrink: 0;
   white-space: nowrap;
+  border: 0.5px solid transparent;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.td-finish-btn:hover {
+.td-action-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+/* Boshlash — blue */
+.td-action-btn.approve {
+  background: rgba(59,130,246,0.08);
+  border-color: rgba(59,130,246,0.28);
+  color: #2563EB;
+}
+.td-action-btn.approve:hover {
+  background: rgba(59,130,246,0.14);
+  border-color: rgba(59,130,246,0.45);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+}
+.td-action-btn.approve.confirm {
+  background: rgba(59,130,246,0.13);
+  border-color: rgba(59,130,246,0.45);
+}
+.td-action-btn.approve.confirm:hover {
+  background: rgba(59,130,246,0.2);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+
+/* Yakunlash — green */
+.td-action-btn.finish {
+  background: rgba(16,185,129,0.08);
+  border-color: rgba(16,185,129,0.28);
+  color: #059669;
+}
+.td-action-btn.finish:hover {
   background: rgba(16,185,129,0.14);
   border-color: rgba(16,185,129,0.45);
   box-shadow: 0 0 0 3px rgba(16,185,129,0.08);
 }
-.td-finish-btn.confirm {
+.td-action-btn.finish.confirm {
   background: rgba(16,185,129,0.13);
   border-color: rgba(16,185,129,0.45);
 }
-.td-finish-btn.confirm:hover {
+.td-action-btn.finish.confirm:hover {
   background: rgba(16,185,129,0.2);
   box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
-}
-.td-finish-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  box-shadow: none;
 }
 
 /* Inline confirm strip */
@@ -281,12 +302,19 @@
   background: rgba(16,185,129,0.05);
   animation: td-in 0.15s ease both;
 }
+.td-finish-confirm.approve {
+  border-color: rgba(59,130,246,0.22);
+  background: rgba(59,130,246,0.05);
+}
 
 .td-finish-confirm-text {
   font-size: 11.5px;
   font-weight: 500;
   color: #059669;
   white-space: nowrap;
+}
+.td-finish-confirm.approve .td-finish-confirm-text {
+  color: #2563EB;
 }
 
 .td-finish-cancel {
@@ -305,10 +333,10 @@
   color: #DC2626;
 }
 
-/* Mobile: icon only, no labels */
+/* Mobile: icon only, hide labels */
 @media (max-width: 480px) {
   .td-finish-label        { display: none; }
-  .td-finish-btn          { width: 30px; padding: 0; }
+  .td-action-btn          { width: 30px; padding: 0; }
   .td-finish-confirm-text { display: none; }
   .td-finish-confirm      { padding: 3px 4px; gap: 4px; }
 }

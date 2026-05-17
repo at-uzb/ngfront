@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, Check, X, Clock, AlertCircle,
   Paperclip, MessageSquare, Send, Loader,
-  User, Calendar, RefreshCw, Shield, ChevronDown, FileText,
+  User, Calendar, RefreshCw, Shield, ChevronDown, FileText, Play,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import api from '../lib/api'
@@ -73,9 +73,9 @@ function timeAgo(iso) {
 }
 
 const STATUS_MAP = {
-  todo:       { label: 'Kutilmoqda', cls: 'badge-todo', dot: '#94A3B8' },
-  inprogress: { label: 'Jarayonda',  cls: 'badge-prog', dot: '#3B82F6' },
-  done:       { label: 'Bajarildi',  cls: 'badge-done', dot: '#10B981' },
+  kutilmoqda: { label: 'Kutilmoqda', cls: 'badge-todo', dot: '#94A3B8' },
+  jarayonda:  { label: 'Jarayonda',  cls: 'badge-prog', dot: '#3B82F6' },
+  bajarildi:  { label: 'Bajarildi',  cls: 'badge-done', dot: '#10B981' },
 }
 const PRIORITY_MAP = {
   high:   { label: 'Yuqori', cls: 'badge-high', dot: '#EF4444' },
@@ -88,20 +88,22 @@ export default function TaskDetail() {
   const navigate    = useNavigate()
   const { isAdmin } = useAuth()
 
-  const [task,        setTask]        = useState(null)
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState(null)
-  const [editing,     setEditing]     = useState(false)
-  const [form,        setForm]        = useState({})
-  const [saving,      setSaving]      = useState(false)
-  const [saveErr,     setSaveErr]     = useState('')
-  const [commentText, setCommentText] = useState('')
-  const [sendingCmt,  setSendingCmt]  = useState(false)
-  const [uploading,   setUploading]   = useState(false)
-  const [lightbox,    setLightbox]    = useState(null)
-  const [cmtFiles,    setCmtFiles]    = useState([])
-  const [finishing,   setFinishing]   = useState(false)
-  const [confirmDone, setConfirmDone] = useState(false)
+  const [task,           setTask]           = useState(null)
+  const [loading,        setLoading]        = useState(true)
+  const [error,          setError]          = useState(null)
+  const [editing,        setEditing]        = useState(false)
+  const [form,           setForm]           = useState({})
+  const [saving,         setSaving]         = useState(false)
+  const [saveErr,        setSaveErr]        = useState('')
+  const [commentText,    setCommentText]    = useState('')
+  const [sendingCmt,     setSendingCmt]     = useState(false)
+  const [uploading,      setUploading]      = useState(false)
+  const [lightbox,       setLightbox]       = useState(null)
+  const [cmtFiles,       setCmtFiles]       = useState([])
+  const [finishing,      setFinishing]      = useState(false)
+  const [confirmDone,    setConfirmDone]    = useState(false)
+  const [approving,      setApproving]      = useState(false)
+  const [confirmApprove, setConfirmApprove] = useState(false)
 
   const commentEndRef = useRef(null)
   const cmtFileRef    = useRef(null)
@@ -114,7 +116,7 @@ export default function TaskDetail() {
         setTask(res.data)
         setForm({
           name:     res.data.name,
-          status:   res.data.status   ?? 'todo',
+          status:   res.data.status   ?? 'kutilmoqda',
           priority: res.data.priority ?? 'medium',
           deadline: res.data.deadline ? res.data.deadline.slice(0, 10) : '',
         })
@@ -145,7 +147,8 @@ export default function TaskDetail() {
   const handleCancelEdit = () => {
     setEditing(false); setSaveErr('')
     setForm({
-      name: task.name, status: task.status ?? 'todo',
+      name:     task.name,
+      status:   task.status   ?? 'kutilmoqda',
       priority: task.priority ?? 'medium',
       deadline: task.deadline ? task.deadline.slice(0, 10) : '',
     })
@@ -181,19 +184,36 @@ export default function TaskDetail() {
       setCommentText('')
       setCmtFiles([])
       setTimeout(() => commentEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-    } catch (error) {
-      console.error('Comment error:', error)
+    } catch (err) {
+      console.error('Comment error:', err)
       setSaveErr("Izoh qo'shishda xatolik")
     } finally {
       setSendingCmt(false)
     }
   }
 
+  const handleApprove = async () => {
+    setApproving(true); setSaveErr('')
+    try {
+      await api.post(`/tasks/kts/${id}/approve/`)
+      setTask(prev => ({
+        ...prev,
+        status: 'jarayonda',
+        can_approve: false,
+      }))
+    } catch { setSaveErr('Jarayonga olishda xatolik yuz berdi') }
+    finally  { setApproving(false) }
+  }
+
   const handleMarkDone = async () => {
     setFinishing(true); setSaveErr('')
     try {
-      const res = await api.post(`/tasks/kts/${id}/done/`)
-      setTask(res.data)
+      await api.post(`/tasks/kts/${id}/done/`)
+      setTask(prev => ({
+        ...prev,
+        status: 'bajarildi',
+        can_finish: false,
+      }))
     } catch { setSaveErr('Yakunlashda xatolik yuz berdi') }
     finally  { setFinishing(false) }
   }
@@ -209,11 +229,13 @@ export default function TaskDetail() {
     </div>
   )
 
-  const st = STATUS_MAP[task.status]     ?? STATUS_MAP.todo
+  const st = STATUS_MAP[task.status]     ?? STATUS_MAP.kutilmoqda
   const pr = PRIORITY_MAP[task.priority] ?? PRIORITY_MAP.medium
   const canEdit    = task.can_edit         ?? isAdmin
   const canUpload  = task.can_upload_media ?? isAdmin
   const canComment = task.can_comment      ?? true
+  const canApprove = task.can_approve      ?? false
+  const canFinish  = task.can_finish       ?? false
   const comments   = task.comments         ?? []
 
   return (
@@ -249,6 +271,7 @@ export default function TaskDetail() {
           )}
 
           <div className="td-title-actions">
+
             {/* Edit controls */}
             {canEdit && (
               editing ? (
@@ -267,13 +290,41 @@ export default function TaskDetail() {
               )
             )}
 
-            {/* Yakunlash — only when not editing and not already done */}
-            {canEdit && !editing && task.status !== 'done' && (
+            {/* Boshlash — can_approve + status is kutilmoqda */}
+            {canApprove && !editing && task.status === 'kutilmoqda' && (
+              confirmApprove ? (
+                <div className="td-finish-confirm approve">
+                  <span className="td-finish-confirm-text">Jarayonga olasizmi?</span>
+                  <button
+                    className="td-action-btn approve confirm"
+                    onClick={() => { handleApprove(); setConfirmApprove(false) }}
+                    disabled={approving}
+                  >
+                    {approving
+                      ? <Loader size={13} className="t-spin" />
+                      : <Check size={13} strokeWidth={2.5} />
+                    }
+                    <span className="td-finish-label">Ha</span>
+                  </button>
+                  <button className="td-finish-cancel" onClick={() => setConfirmApprove(false)}>
+                    <X size={13} strokeWidth={2} />
+                  </button>
+                </div>
+              ) : (
+                <button className="td-action-btn approve" onClick={() => setConfirmApprove(true)}>
+                  <Play size={13} strokeWidth={2} />
+                  <span className="td-finish-label">Boshlash</span>
+                </button>
+              )
+            )}
+
+            {/* Yakunlash — can_finish + status is jarayonda */}
+            {canFinish && !editing && task.status === 'jarayonda' && (
               confirmDone ? (
                 <div className="td-finish-confirm">
                   <span className="td-finish-confirm-text">Ishonchingiz komilmi?</span>
                   <button
-                    className="td-finish-btn confirm"
+                    className="td-action-btn finish confirm"
                     onClick={() => { handleMarkDone(); setConfirmDone(false) }}
                     disabled={finishing}
                   >
@@ -288,12 +339,13 @@ export default function TaskDetail() {
                   </button>
                 </div>
               ) : (
-                <button className="td-finish-btn" onClick={() => setConfirmDone(true)}>
+                <button className="td-action-btn finish" onClick={() => setConfirmDone(true)}>
                   <Check size={14} strokeWidth={2.5} />
                   <span className="td-finish-label">Yakunlash</span>
                 </button>
               )
             )}
+
           </div>
         </div>
 
