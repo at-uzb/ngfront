@@ -91,6 +91,16 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const response = await authService.getCurrentUser()
+      const userData = response.user ?? response
+      setUser(userData)
+    } catch (err) {
+      console.error('refreshUser failed:', err)
+    }
+  }, [])
+
   // ─── Context value ─────────────────────────────────────────────────────────
   const value = useMemo(
     () => ({
@@ -100,12 +110,13 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       updateUser,
+      refreshUser,
       isAuthenticated: !!user,
       isAdmin: user?.is_admin === true,
       isVerified: user?.is_verified === true,
       isTasker: user?.status === 'tasker',
     }),
-    [user, loading, error, login, logout, updateUser]
+    [user, loading, error, login, logout, updateUser, refreshUser]
   );
 
   return (

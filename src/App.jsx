@@ -50,7 +50,7 @@ function AppShell() {
   const location = useLocation()
   const inline = useInline()
   const currentSection = getSectionFromPath(location.pathname)
-
+  const { refreshUser, user } = useAuth()
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -73,6 +73,8 @@ function AppShell() {
           darkMode={darkMode}
           inline={inline}
           toggleDarkMode={toggleDarkMode}
+          onUserRefresh={refreshUser} 
+          user={user}          
         />
         <div className="content-area">
           {/* Outlet renders the matched child route — AppShell never remounts */}
