@@ -1,54 +1,50 @@
-import { useState, useEffect,useRef, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ArrowLeft, Upload, X, FileImage, Loader,
-  Calendar, AlignLeft, Tag, Users, Clock,
-} from 'lucide-react'
+import { Upload, X, FileImage, Loader, Calendar, AlignLeft, Tag, Users, Clock } from 'lucide-react'
 import api from '../lib/api'
 import { useGroupStore } from '../hooks/useGroupStore'
-import "../assets/TaskCreate.css"
 
 const PRIORITIES = [
-  { id: 'yuqori', label: 'Yuqori', cls: 'badge-high' },
-  { id: 'orta',   label: "O'rta",  cls: 'badge-mid'  },
-  { id: 'past',   label: 'Past',   cls: 'badge-low'  },
+  { id: 'yuqori', label: 'Yuqori', color: '#e05252', bg: 'rgba(224,82,82,0.12)'  },
+  { id: 'orta',   label: "O'rta",  color: '#d4900a', bg: 'rgba(212,144,10,0.12)' },
+  { id: 'past',   label: 'Past',   color: '#3d9e6b', bg: 'rgba(61,158,107,0.12)' },
 ]
 
-// ── Component ────────────────────────────────────────────────
-export default function TaskCreate( ) {
-  const navigate = useNavigate()
+export default function TaskCreate() {
+  const navigate     = useNavigate()
   const fileInputRef = useRef(null)
-
   const { groups, selectedId, setSelectedId } = useGroupStore()
 
   const [form, setForm] = useState({
-    name:        '',
-    priority:    'orta',   // ← matches KT.Priority.ORTA
-    assignee:    '',
-    deadline:    '',
-    description: '',
+    name: '', priority: 'orta', assignee: '', deadline: '', description: '',
   })
-
   const [mediaFiles,  setMediaFiles]  = useState([])
   const [error,       setError]       = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [saving,      setSaving]      = useState(false)
   const [dragOver,    setDragOver]    = useState(false)
+  const [msg,         setMsg]         = useState(null)
 
   const patch = (k, v) => {
     setForm(f => ({ ...f, [k]: v }))
     setFieldErrors(fe => ({ ...fe, [k]: '' }))
   }
 
-  // ── File handling ────────────────────────────────────────
+  const flash = (type, text) => {
+    setMsg({ type, text })
+    setTimeout(() => setMsg(null), 3500)
+  }
+
+  // ── Files ────────────────────────────────────────────────
   const addFiles = useCallback((files) => {
-    const arr = Array.from(files).filter(f => f.type.startsWith('image/'))
-    const next = arr.map(file => ({
-      id:          Math.random().toString(36).slice(2),
-      file,
-      preview:     URL.createObjectURL(file),
-      description: '',
-    }))
+    const next = Array.from(files)
+      .filter(f => f.type.startsWith('image/'))
+      .map(file => ({
+        id: Math.random().toString(36).slice(2),
+        file,
+        preview: URL.createObjectURL(file),
+        description: '',
+      }))
     setMediaFiles(prev => [...prev, ...next])
   }, [])
 
@@ -102,213 +98,586 @@ export default function TaskCreate( ) {
       const response = await api.post('/tasks/create/', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-
       navigate(`/tasks/${response.data.id}/`)
     } catch (err) {
       const data = err?.response?.data
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         const fe = {}
-        Object.entries(data).forEach(([k, v]) => {
-          fe[k] = Array.isArray(v) ? v[0] : String(v)
-        })
+        Object.entries(data).forEach(([k, v]) => { fe[k] = Array.isArray(v) ? v[0] : String(v) })
         setFieldErrors(fe)
+        flash('error', 'Iltimos, xatolarni tekshiring')
       } else {
-        setError('Saqlashda xatolik yuz berdi')
+        flash('error', 'Saqlashda xatolik yuz berdi')
       }
     } finally {
       setSaving(false)
     }
   }
-  
-  // ── Render ───────────────────────────────────────────────
+
+  const activePriority = PRIORITIES.find(p => p.id === form.priority)
+
   return (
-    <div className="tc-page">
+    <>
+      <style>{CSS}</style>
+      <div className="tc2">
 
-      {/* ── Two-column body ───────────────────────────── */}
-      <div className="tc-body">
+        {/* ── Cover ── */}
+        <div className="tc2-cover">
+          <button className="tc2-back" onClick={() => navigate(-1)} type="button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
 
-        {/* Left — main content */}
-        <div className="tc-col-main">
-
-          {/* Name */}
-          <div className="tc-field-group">
-            <label className="tc-label">
-              <Tag size={12} strokeWidth={2} />
-              Nomi <span className="tc-req">*</span>
-            </label>
-            <input
-              className={`tc-input tc-input-lg${fieldErrors.name ? ' err' : ''}`}
-              type="text"
-              autoFocus
-              placeholder="Topshiriq nomini kiriting..."
-              value={form.name}
-              onChange={e => patch('name', e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSave()}
-            />
-            {fieldErrors.name && <span className="tc-ferr">{fieldErrors.name}</span>}
+          <div className="tc2-cover-center">
+            {/* Icon circle */}
+            <div className="tc2-cover-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <h1 className="tc2-cover-title">Yangi topshiriq</h1>
+            <p className="tc2-cover-sub">Barcha maydonlarni to'ldiring</p>
           </div>
+        </div>
 
-          {/* Description — now required */}
-          <div className="tc-field-group">
-            <label className="tc-label">
-              <AlignLeft size={12} strokeWidth={2} />
-              Tavsif <span className="tc-req">*</span>
-            </label>
-            <textarea
-              className={`tc-input tc-textarea${fieldErrors.description ? ' err' : ''}`}
-              placeholder="Topshiriq haqida batafsil ma'lumot..."
-              value={form.description}
-              onChange={e => patch('description', e.target.value)}
-              rows={5}
-            />
-            {fieldErrors.description && <span className="tc-ferr">{fieldErrors.description}</span>}
-          </div>
+        {/* ── Sheet ── */}
+        <div className="tc2-sheet">
+          <div className="tc2-handle" />
 
-          {/* Media upload */}
-          <div className="tc-field-group">
-            <label className="tc-label">
-              <FileImage size={12} strokeWidth={2} />
-              Rasm va fayllar
-            </label>
+          {/* Flash */}
+          {msg && (
+            <div className={`tc2-flash tc2-flash--${msg.type}`} role="alert">
+              {msg.type === 'success'
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              }
+              {msg.text}
+            </div>
+          )}
 
-            <div
-              className={`tc-dropzone${dragOver ? ' over' : ''}`}
-              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload size={20} strokeWidth={1.5} />
-              <span className="tc-drop-text">
-                Rasmlarni bu yerga tashlang yoki <u>tanlang</u>
-              </span>
-              <span className="tc-drop-hint">PNG, JPG, WEBP</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                style={{ display: 'none' }}
-                onChange={e => { addFiles(e.target.files); e.target.value = '' }}
-              />
+          <div className="tc2-rows">
+
+            {/* Name */}
+            <div className="tc2-row tc2-row--tall">
+              <div className="tc2-row-left">
+                <span className="tc2-row-icon"><Tag size={15} strokeWidth={2} /></span>
+                <span className="tc2-row-label">Nomi <span className="tc2-req">*</span></span>
+              </div>
+              <div className="tc2-row-input">
+                <input
+                  className={fieldErrors.name ? 'err' : ''}
+                  type="text"
+                  autoFocus
+                  placeholder="Topshiriq nomi..."
+                  value={form.name}
+                  onChange={e => patch('name', e.target.value)}
+                  disabled={saving}
+                />
+                {fieldErrors.name && <span className="tc2-ferr">{fieldErrors.name}</span>}
+              </div>
             </div>
 
-            {mediaFiles.length > 0 && (
-              <div className="tc-media-grid">
-                {mediaFiles.map(({ id, preview, description }) => (
-                  <div className="tc-media-card" key={id}>
-                    <div className="tc-media-img-wrap">
-                      <img src={preview} alt="" className="tc-media-img" />
-                      <button
-                        className="tc-media-del"
-                        onClick={() => removeFile(id)}
-                        type="button"
-                      >
-                        <X size={11} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                    <input
-                      className="tc-input tc-media-desc"
-                      type="text"
-                      placeholder="Tavsif (ixtiyoriy)"
-                      value={description}
-                      onChange={e => patchFileDesc(id, e.target.value)}
-                    />
-                  </div>
+            {/* Group */}
+            <div className="tc2-row">
+              <div className="tc2-row-left">
+                <span className="tc2-row-icon"><Users size={15} strokeWidth={2} /></span>
+                <span className="tc2-row-label">Bo'lim <span className="tc2-req">*</span></span>
+              </div>
+              <div className="tc2-row-input">
+                <select
+                  className={fieldErrors.group_id ? 'err' : ''}
+                  value={selectedId ?? ''}
+                  onChange={e => { setSelectedId(Number(e.target.value)); setFieldErrors(fe => ({ ...fe, group_id: '' })) }}
+                  disabled={saving}
+                >
+                  <option value="">— Tanlang —</option>
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id}>{g.short_name} — {g.name}</option>
+                  ))}
+                </select>
+                {fieldErrors.group_id && <span className="tc2-ferr">{fieldErrors.group_id}</span>}
+              </div>
+            </div>
+
+            {/* Priority */}
+            <div className="tc2-row">
+              <div className="tc2-row-left">
+                <span className="tc2-row-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </span>
+                <span className="tc2-row-label">Ustuvorlik</span>
+              </div>
+              <div className="tc2-row-input tc2-chips">
+                {PRIORITIES.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`tc2-chip${form.priority === p.id ? ' sel' : ''}`}
+                    style={form.priority === p.id
+                      ? { background: p.bg, color: p.color, borderColor: p.color }
+                      : { borderColor: '#e0e0e0', color: '#888' }
+                    }
+                    onClick={() => patch('priority', p.id)}
+                    disabled={saving}
+                  >
+                    {p.label}
+                  </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {error && <div className="tc-global-err">{error}</div>}
-        </div>
-
-        {/* Right — meta sidebar */}
-        <div className="tc-col-meta">
-
-          {/* Group */}
-          <div className="tc-field-group">
-            <label className="tc-label">
-              <Users size={12} strokeWidth={2} />
-              Bo'lim <span className="tc-req">*</span>
-            </label>
-            <select
-              className={`tc-input${fieldErrors.group_id ? ' err' : ''}`}
-              value={selectedId ?? ''}
-              onChange={e => {
-                setSelectedId(Number(e.target.value))
-                setFieldErrors(fe => ({ ...fe, group_id: '' }))
-              }}
-            >
-              <option value="">— Tanlang —</option>
-              {groups.map(g => (
-                <option key={g.id} value={g.id}>
-                  {g.short_name} — {g.name}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.group_id && <span className="tc-ferr">{fieldErrors.group_id}</span>}
-          </div>
-
-          {/* Priority chips */}
-          <div className="tc-field-group">
-            <label className="tc-label">Ustuvorlik</label>
-            <div className="tc-chip-row">
-              {PRIORITIES.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`t-badge ${p.cls} tc-chip${form.priority === p.id ? ' tc-chip-sel' : ''}`}
-                  onClick={() => patch('priority', p.id)}
-                >
-                  {p.label}
-                </button>
-              ))}
             </div>
-          </div>
 
-          {/* Deadline */}
-          <div className="tc-field-group">
-            <label className="tc-label">
-              <Calendar size={12} strokeWidth={2} />
-              Muddat
-            </label>
-            <input
-              className="tc-input"
-              type="datetime-local"
-              value={form.deadline}
-              onChange={e => patch('deadline', e.target.value)}
-            />
-          </div>
+            {/* Deadline */}
+            <div className="tc2-row">
+              <div className="tc2-row-left">
+                <span className="tc2-row-icon"><Calendar size={15} strokeWidth={2} /></span>
+                <span className="tc2-row-label">Muddat</span>
+              </div>
+              <div className="tc2-row-input">
+                <input
+                  type="datetime-local"
+                  value={form.deadline}
+                  onChange={e => patch('deadline', e.target.value)}
+                  disabled={saving}
+                />
+              </div>
+            </div>
 
-          {/* Assignee */}
-          <div className="tc-field-group">
-            <label className="tc-label">
-              <Clock size={12} strokeWidth={2} />
-              Mas'ul
-            </label>
-            <input
-              className="tc-input"
-              type="text"
-              maxLength={4}
-              placeholder="JD"
-              value={form.assignee}
-              onChange={e => patch('assignee', e.target.value.toUpperCase())}
-            />
-          </div>
+            {/* Assignee */}
+            <div className="tc2-row">
+              <div className="tc2-row-left">
+                <span className="tc2-row-icon"><Clock size={15} strokeWidth={2} /></span>
+                <span className="tc2-row-label">Mas'ul</span>
+              </div>
+              <div className="tc2-row-input">
+                <input
+                  type="text"
+                  maxLength={4}
+                  placeholder="JD"
+                  value={form.assignee}
+                  onChange={e => patch('assignee', e.target.value.toUpperCase())}
+                  disabled={saving}
+                />
+              </div>
+            </div>
 
-          <button
-            className="t-mbtn save tc-save-full"
-            onClick={handleSave}
-            disabled={saving}
-            type="button"
-          >
+            {/* Description */}
+            <div className="tc2-row tc2-row--desc">
+              <div className="tc2-row-left tc2-row-left--top">
+                <span className="tc2-row-icon"><AlignLeft size={15} strokeWidth={2} /></span>
+                <span className="tc2-row-label">Tavsif <span className="tc2-req">*</span></span>
+              </div>
+              <div className="tc2-row-input">
+                <textarea
+                  className={fieldErrors.description ? 'err' : ''}
+                  placeholder="Topshiriq haqida batafsil..."
+                  value={form.description}
+                  onChange={e => patch('description', e.target.value)}
+                  rows={4}
+                  disabled={saving}
+                />
+                {fieldErrors.description && <span className="tc2-ferr">{fieldErrors.description}</span>}
+              </div>
+            </div>
+
+            {/* Media */}
+            <div className="tc2-row tc2-row--media">
+              <div className="tc2-row-left tc2-row-left--top">
+                <span className="tc2-row-icon"><FileImage size={15} strokeWidth={2} /></span>
+                <span className="tc2-row-label">Fayllar</span>
+              </div>
+              <div className="tc2-row-input">
+                <div
+                  className={`tc2-dropzone${dragOver ? ' over' : ''}`}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={onDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload size={18} strokeWidth={1.5} />
+                  <span>Rasmlarni tashlang yoki <u>tanlang</u></span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={e => { addFiles(e.target.files); e.target.value = '' }}
+                  />
+                </div>
+
+                {mediaFiles.length > 0 && (
+                  <div className="tc2-media-grid">
+                    {mediaFiles.map(({ id, preview, description }) => (
+                      <div className="tc2-media-card" key={id}>
+                        <div className="tc2-media-img-wrap">
+                          <img src={preview} alt="" />
+                          <button className="tc2-media-del" onClick={() => removeFile(id)} type="button">
+                            <X size={10} strokeWidth={2.5} />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          className="tc2-media-desc"
+                          placeholder="Tavsif..."
+                          value={description}
+                          onChange={e => patchFileDesc(id, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>{/* /rows */}
+
+          <button className="tc2-save" onClick={handleSave} disabled={saving} type="button">
             {saving
-              ? <><Loader size={13} strokeWidth={1.8} className="t-spin" /> Saqlanmoqda...</>
+              ? <><span className="tc2-spinner" /> Saqlanmoqda…</>
               : 'Saqlash'}
           </button>
-        </div>
+
+        </div>{/* /sheet */}
       </div>
-    </div>
+    </>
   )
 }
+
+/* ══════════════════════════════════════════════════════════ */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.tc2 {
+  --accent:     #3d9e6b;
+  --accent-dk:  #2e7d52;
+  --accent-lt:  #d0f8d0;
+  --bg:         linear-gradient(160deg, #5effa5 0%, #3d9e6b 100%);
+  --danger:     #e05252;
+  --danger-lt:  rgba(224,82,82,0.1);
+
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Cover ── */
+.tc2-cover {
+  position: relative;
+  padding: 3rem 1.5rem 6.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tc2-back {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.1rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tc2-back:hover { background: rgba(255,255,255,0.28); }
+
+.tc2-cover-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.tc2-cover-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  border: 3px solid rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 0.4rem;
+}
+
+.tc2-cover-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.tc2-cover-sub {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.72);
+  margin: 0;
+}
+
+/* ── Sheet ── */
+.tc2-sheet {
+  background: #f5f5f5;
+  border-radius: 28px 28px 0 0;
+  margin-top: -3rem;
+  flex: 1;
+  padding: 0 0 2.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.tc2-handle {
+  width: 40px;
+  height: 4px;
+  background: #ddd;
+  border-radius: 99px;
+  margin: 12px auto 18px;
+  flex-shrink: 0;
+}
+
+/* Flash */
+.tc2-flash {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 1.25rem 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: 14px;
+}
+.tc2-flash--success { background: var(--accent-lt); color: var(--accent-dk); }
+.tc2-flash--error   { background: var(--danger-lt); color: var(--danger); }
+
+/* ── Rows ── */
+.tc2-rows { display: flex; flex-direction: column; }
+
+.tc2-row {
+  display: flex;
+  align-items: center;
+  padding: 0 1.25rem;
+  min-height: 62px;
+  border-bottom: 1px solid #ebebeb;
+  gap: 0.75rem;
+}
+.tc2-row:last-child { border-bottom: none; }
+.tc2-row--tall  { min-height: 68px; }
+.tc2-row--desc  { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+.tc2-row--media { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+
+.tc2-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 120px;
+  flex-shrink: 0;
+}
+.tc2-row-left--top { align-items: flex-start; padding-top: 2px; }
+
+.tc2-row-icon {
+  display: flex;
+  align-items: center;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.tc2-row-label {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
+.tc2-req { color: var(--danger); }
+
+.tc2-row-input { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+
+/* Inputs / selects / textarea */
+.tc2-sheet input,
+.tc2-sheet select,
+.tc2-sheet textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid #d8d8d8;
+  border-radius: 0;
+  outline: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #222;
+  font-family: inherit;
+  text-align: right;
+  padding: 0.3rem 0;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.15s;
+  resize: none;
+}
+.tc2-sheet input::placeholder,
+.tc2-sheet textarea::placeholder { color: #bbb; }
+.tc2-sheet input:focus,
+.tc2-sheet select:focus,
+.tc2-sheet textarea:focus  { border-bottom-color: var(--accent); }
+.tc2-sheet input:disabled,
+.tc2-sheet select:disabled,
+.tc2-sheet textarea:disabled { opacity: 0.45; cursor: not-allowed; }
+.tc2-sheet input.err,
+.tc2-sheet select.err,
+.tc2-sheet textarea.err { border-bottom-color: var(--danger); }
+
+.tc2-sheet textarea {
+  text-align: left;
+  line-height: 1.55;
+  border-bottom: none;
+  border: 1.5px solid #d8d8d8;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+.tc2-sheet textarea:focus { border-color: var(--accent); }
+
+.tc2-ferr { font-size: 11px; color: var(--danger); }
+
+/* Priority chips */
+.tc2-chips {
+  flex-direction: row !important;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.tc2-chip {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 0.2rem 0.75rem;
+  border-radius: 99px;
+  border: 1.5px solid;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  opacity: 0.6;
+}
+.tc2-chip.sel  { opacity: 1; }
+.tc2-chip:hover { opacity: 0.85; }
+.tc2-chip:disabled { cursor: not-allowed; opacity: 0.35; }
+
+/* Dropzone */
+.tc2-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 20px 16px;
+  border: 1.5px dashed #d0d0d0;
+  border-radius: 12px;
+  cursor: pointer;
+  color: #aaa;
+  font-size: 0.82rem;
+  text-align: center;
+  transition: all 0.15s;
+}
+.tc2-dropzone:hover,
+.tc2-dropzone.over { border-color: var(--accent); color: var(--accent-dk); background: rgba(61,158,107,0.04); }
+.tc2-dropzone u { text-decoration-color: currentColor; }
+
+/* Media grid */
+.tc2-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.tc2-media-card { display: flex; flex-direction: column; gap: 4px; }
+.tc2-media-img-wrap {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+  background: #eee;
+  border: 0.5px solid #e0e0e0;
+}
+.tc2-media-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tc2-media-del {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0;
+}
+.tc2-media-img-wrap:hover .tc2-media-del { opacity: 1; }
+.tc2-media-desc {
+  font-size: 11px !important;
+  padding: 4px 6px !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 6px !important;
+  text-align: left !important;
+  color: #555 !important;
+}
+.tc2-media-desc:focus { border-color: var(--accent) !important; }
+
+/* Save */
+.tc2-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.25rem 1.25rem 0;
+  padding: 1rem;
+  background: linear-gradient(160deg, #5effa5 0%, #3d9e6b 100%);
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.tc2-save:hover:not(:disabled) { opacity: 0.88; }
+.tc2-save:active:not(:disabled) { transform: scale(0.985); }
+.tc2-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tc2-spinner {
+  width: 15px; height: 15px;
+  border: 2.5px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: tc2-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes tc2-spin { to { transform: rotate(360deg); } }
+
+/* Mobile */
+@media (max-width: 480px) {
+  .tc2-cover { padding: 2.5rem 1rem 6rem; }
+  .tc2-row-left { width: 100px; }
+  .tc2-row-label { font-size: 0.8rem; }
+}
+`

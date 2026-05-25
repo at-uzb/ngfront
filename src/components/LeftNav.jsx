@@ -5,6 +5,7 @@ import {
   MessageSquare,
   User,
   MoreHorizontal,
+  Newspaper
 } from 'lucide-react'
 import { useRole } from '../hooks/useRole'
 import '../assets/LeftNav.css'
@@ -12,7 +13,7 @@ import '../assets/LeftNav.css'
 const MAIN_ITEMS = [
   { path: '/dashboard', name: 'Dashboard',    icon: LayoutGrid,    permission: 'viewDashboard', badge: null },
   { path: '/tasks',     name: 'Topshiriqlar', icon: CheckSquare,   permission: 'viewTasks',      badge: 12   },
-  { path: '/chat',      name: 'Chat',         icon: MessageSquare, permission: 'viewAnalytics',  badge: 3    },
+  { path: '/news',      name: 'Yangiliklar',  icon: Newspaper, permission: 'viewAnalytics',  badge: null    },
 ]
 
 const ACCOUNT_ITEMS = [

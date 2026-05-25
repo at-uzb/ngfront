@@ -7,6 +7,7 @@ import Profile from './components/Profile'
 import Tasks from './components/Tasks'
 import TaskDetail from './components/TaskDetail'
 import Chat from './components/Chat'
+import News from './components/News'
 import TaskCreate from './components/TaskCreate'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
@@ -14,9 +15,6 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import Login from './pages/Login'
 import './App.css'
 
-// ─── Inline detection ──────────────────────────────────────────────────────────
-// "Inline" means we're on a detail/create page that shows a back button
-// instead of the breadcrumb. Derived from the URL — no state needed.
 const INLINE_PREFIXES = ['/tasks/', '/task/create']
 
 const useInline = () => {
@@ -27,10 +25,10 @@ const useInline = () => {
 // ─── Section label ─────────────────────────────────────────────────────────────
 const SECTION_MAP = {
   '/dashboard':   'Dashboard',
-  '/tasks':       'Tasks',
+  '/tasks':       'Topshiriqlar',
   '/profile':     'Profile',
-  '/chat':        'Chat',
-  '/task/create': 'Create Task',
+  '/news':        'Yangiliklar',
+  '/task/create': "Topshiriq qo'shish",
 }
 
 const getSectionFromPath = (pathname) => {
@@ -99,7 +97,7 @@ function App() {
               <Route path="tasks"       element={<Tasks />} />
               <Route path="tasks/:id"   element={<TaskDetail />} />
               <Route path="profile"     element={<Profile />} />
-              <Route path="chat"        element={<Chat />} />
+              <Route path="news"        element={<News />} />
               <Route path="task/create" element={<TaskCreate />} />
             </Route>
           </Route>

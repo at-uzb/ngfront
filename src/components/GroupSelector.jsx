@@ -146,6 +146,34 @@ export default function GroupSelector() {
     )
   }
 
+  // ── Single group: static display, no dropdown, no chevron
+  if (groups.length === 1) {
+    const color = resolveColor(groups[0], 0)
+    const contrast = getContrastColor(color)
+    return (
+      <div className="group-selector">
+        <div
+          className="group-selector__trigger"
+          style={{ '--group-color': color, cursor: 'default' }}
+        >
+          <span
+            className="group-selector__avatar"
+            style={{ background: color, color: contrast }}
+            aria-hidden="true"
+          >
+            {initials(groups[0])}
+          </span>
+          <span className="group-selector__info">
+            <span className="group-selector__name">{groups[0].name}</span>
+            {groups[0].admin_count !== null && (
+              <span className="group-selector__meta">{groups[0].admin_count} admin</span>
+            )}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
   const selColor = selectedGroup
     ? resolveColor(selectedGroup, groups.findIndex((g) => g.id === selectedGroup.id))
     : '#6366f1'

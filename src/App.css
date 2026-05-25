@@ -63,7 +63,17 @@
   overflow: hidden;
 }
 
-.content-area:has(>.tc-page){
+.content-area:has(>.tc2){
+  padding: 50px 0 0 0;
+  overflow: hidden;
+}
+
+.content-area:has(>.dash){
+  padding: 60px 0 0 0;
+  overflow: hidden;
+}
+
+.content-area:has(>.pp){
   padding: 50px 0 0 0;
   overflow: hidden;
 }
@@ -104,13 +114,20 @@ body {
 
 @media (max-width: 768px) {
   .content-area {
-    padding: 60px 15px;
-    padding-bottom: 20px;
+    padding: 60px 0 60px 0;
   }
   
   .page-container {
     padding: 15px;
   }
+  .content-area:has(>.pp){
+  padding: 40px 0 0 0;
+  overflow: hidden;
+}
+  .content-area:has(>.tc2){
+  padding: 40px 0 0 0;
+  overflow: hidden;
+}
 }
 
 html {

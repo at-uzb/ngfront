@@ -30,15 +30,19 @@ async function fetchGroups() {
 
   try {
     const res = await api.get('/groups/list/')
+    const results = res.data.results ?? []
 
-    // ALL_GROUP always sits at the top
-    _groups = [ALL_GROUP, ...(res.data.results ?? [])]
-
-    const stored = localStorage.getItem(STORAGE_KEY)
-    const valid = _groups.find((g) => String(g.id) === String(stored))
-
-    // Default to ALL if nothing valid is stored
-    _selectedId = valid ? valid.id : 'ALL'
+    if (results.length === 1) {
+      // Single group: skip ALL_GROUP, auto-select the only group
+      _groups = results
+      _selectedId = results[0].id
+    } else {
+      // Multiple groups: prepend ALL_GROUP and restore last selection
+      _groups = [ALL_GROUP, ...results]
+      const stored = localStorage.getItem(STORAGE_KEY)
+      const valid = _groups.find((g) => String(g.id) === String(stored))
+      _selectedId = valid ? valid.id : 'ALL'
+    }
 
     _loading = false
   } catch (err) {

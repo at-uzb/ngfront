@@ -282,7 +282,7 @@ const CSS = `
 .dash {
   background: var(--bg);
   min-height: 100vh;
-  padding: 24px;
+  padding: 0 1rem;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -673,9 +673,8 @@ const CSS = `
   .countdown-bar-track { width: 80px; }
   .period-tabs { flex-wrap: wrap; }
 }
-
 @media (max-width: 480px) {
-  .stats-grid { grid-template-columns: 1fr; }
+  .stat-icon-wrap { display: none; }
 }
 `
 

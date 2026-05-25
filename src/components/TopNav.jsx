@@ -1,16 +1,24 @@
 import { useState, useCallback } from 'react'
 import { ArrowLeft, Bell, Sun, Moon } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'  // ✅ ADDED: Link
 import NotificationDrawer from './NotificationDrawer'
 import { useNotifications } from '../hooks/useNotifications'
 import '../assets/TopNav.css'
+
+// ✅ ADDED: derive initials from full_name since API doesn't return initials
+const getInitials = (name) => {
+  if (!name) return 'ME'
+  return name.trim().split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('')
+}
 
 const TopNav = ({ currentSection, inline, darkMode, toggleDarkMode, user, onUserRefresh }) => {
   const navigate = useNavigate()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  // onUserRefresh is called after mark-read so AuthContext re-fetches
-  // user.unread_notifications and the dot count stays in sync
   const {
     notifications,
     loading,
@@ -22,7 +30,7 @@ const TopNav = ({ currentSection, inline, darkMode, toggleDarkMode, user, onUser
 
   const openDrawer = useCallback(() => {
     setDrawerOpen(true)
-    fetchNotifications()          // lazy-load the list when drawer opens
+    fetchNotifications()
   }, [fetchNotifications])
 
   const closeDrawer = useCallback(() => {
@@ -45,7 +53,7 @@ const TopNav = ({ currentSection, inline, darkMode, toggleDarkMode, user, onUser
 
         <div className="top-nav-controls">
 
-          {/* Bell — shows red dot when there are unread notifications */}
+          {/* Bell */}
           <button
             className="top-nav-btn notif-btn"
             aria-label="Notifications"
@@ -72,14 +80,25 @@ const TopNav = ({ currentSection, inline, darkMode, toggleDarkMode, user, onUser
 
           <div className="top-nav-divider" />
 
-          <div className="top-nav-avatar" title="Profile">
-            {user?.initials ?? 'ME'}
-          </div>
+          {/* ✅ CHANGED: was a plain div, now a Link with photo + initials fallback */}
+          <Link
+            to="/profile/"
+            className="top-nav-avatar"
+            title={user?.full_name ?? 'Profile'}
+          >
+            {user?.photo
+              ? <img
+                  src={user.photo}
+                  alt={getInitials(user?.full_name)}
+                  className="top-nav-avatar-img"
+                />
+              : getInitials(user?.full_name)
+            }
+          </Link>
 
         </div>
       </header>
 
-      {/* Notification drawer — rendered outside the header so it overlays correctly */}
       <NotificationDrawer
         open={drawerOpen}
         onClose={closeDrawer}

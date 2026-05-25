@@ -1,489 +1,528 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useRole } from '../hooks/useRole';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import '../assets/Profile.css';
 
-const TABS = [
-  { id: 'profile',       label: 'Personal Info' },
-  { id: 'appearance',    label: 'Appearance'    },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'security',      label: 'Security'      },
+const LANGUAGES = [
+  { value: 'en', label: 'English' },
+  { value: 'uz', label: "O'zbek"  },
+  { value: 'ru', label: 'Русский' },
 ];
+
+function initials(full_name, phone) {
+  if (full_name) return full_name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase()).join('');
+  return phone?.[0] ?? '?';
+}
+
+function fmtPhone(p) {
+  if (!p) return '—';
+  const d = p.replace(/\D/g, '');
+  if (d.length === 9) return `+998 ${d.slice(0,2)} ${d.slice(2,5)} ${d.slice(5,7)} ${d.slice(7)}`;
+  return p;
+}
 
 export default function Profile() {
   const { user, updateUser, logout } = useAuth();
-  const { isAdmin, isVerified } = useRole();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState('profile');
-
-  /* ── Profile form ── */
   const [form, setForm] = useState({
-    full_name:  user?.full_name  || '',
-    birth_date: user?.birth_date || '',
-    city:       user?.city       || '',
-    district:   user?.district   || '',
-    language:   user?.language   || 'en',
+    name: '', surname: '', birth_date: '', city: '', district: '', language: 'en',
   });
-
-  /* ── Appearance settings ── */
-  const [appearance, setAppearance] = useState({
-    dark_mode:      false,
-    compact_layout: false,
-    font_size:      'default',
-  });
-
-  /* ── Notification settings ── */
-  const [notifications, setNotifications] = useState({
-    email_notifications: true,
-    sms_notifications:   false,
-    login_alerts:        true,
-    weekly_digest:       false,
-  });
-
-  /* ── Security form ── */
-  const [security, setSecurity] = useState({
-    current_password: '',
-    new_password:     '',
-    confirm_password: '',
-    two_factor:       false,
-  });
-
-  /* ── UI state ── */
-  const [saving,     setSaving]     = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [msg,        setMsg]        = useState({ type: '', text: '' });
+  const [photoFile,    setPhotoFile]    = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg,    setMsg]    = useState(null);
 
   useEffect(() => {
-    if (user) {
-      setForm({
-        full_name:  user.full_name  || '',
-        birth_date: user.birth_date || '',
-        city:       user.city       || '',
-        district:   user.district   || '',
-        language:   user.language   || 'en',
-      });
-    }
+    if (!user) return;
+    const [name = '', ...rest] = (user.full_name || '').split(' ');
+    setForm({
+      name,
+      surname:    rest.join(' '),
+      birth_date: user.birth_date || '',
+      city:       user.city       || '',
+      district:   user.district   || '',
+      language:   user.language   || 'en',
+    });
   }, [user]);
 
-  /* apply dark mode class to <html> */
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', appearance.dark_mode);
-  }, [appearance.dark_mode]);
-
-  const clearMsg = () => setMsg({ type: '', text: '' });
-
-  const showMsg = (type, text) => {
+  const flash = (type, text) => {
     setMsg({ type, text });
-    setTimeout(clearMsg, 3500);
+    setTimeout(() => setMsg(null), 3500);
   };
 
-  /* ── Handlers ── */
-  const handleFormChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    clearMsg();
+  const onField = e => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  const onPhotoChange = e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
   };
 
-  const handleAppearanceChange = (e) => {
-    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setAppearance(prev => ({ ...prev, [e.target.name]: val }));
-    clearMsg();
-  };
-
-  const handleNotifChange = (e) => {
-    setNotifications(prev => ({ ...prev, [e.target.name]: e.target.checked }));
-    clearMsg();
-  };
-
-  const handleSecurityChange = (e) => {
-    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setSecurity(prev => ({ ...prev, [e.target.name]: val }));
-    clearMsg();
-  };
-
-  const handleTabChange = (id) => {
-    setTab(id);
-    clearMsg();
-  };
-
-  /* ── Save handlers ── */
-  const handleSaveProfile = async (e) => {
+  const saveProfile = async e => {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await api.patch('/users/update/', form);
-      updateUser(res.data.user ?? res.data);
-      showMsg('success', '✓ Profile saved successfully!');
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append('photo', photoFile);
+        fd.append('name', form.name);
+        fd.append('surname', form.surname);
+        fd.append('birth_date', form.birth_date);
+        fd.append('language', form.language);
+        fd.append('city', form.city);
+        fd.append('district', form.district);
+        const res = await api.patch('/users/update/', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        updateUser({ ...user, ...(res.data.user ?? res.data) });
+      } else {
+        const res = await api.patch('/users/update/', {
+          name:       form.name,
+          surname:    form.surname,
+          birth_date: form.birth_date,
+          language:   form.language,
+          city:       form.city,
+          district:   form.district,
+        });
+        updateUser({ ...user, ...(res.data.user ?? res.data) });
+      }
+      setPhotoFile(null);
+      flash('success', "Muvaffaqiyatli saqlandi!");
     } catch (err) {
       if (err.response?.status === 401) {
-        showMsg('error', 'Session expired. Redirecting to login…');
+        flash('error', 'Session expired, redirecting…');
         setTimeout(() => { logout(); navigate('/login'); }, 2000);
       } else {
-        showMsg('error', err.response?.data?.message || err.response?.data?.detail || 'Failed to save profile.');
+        flash('error', err.response?.data?.detail || err.response?.data?.message || 'Could not save changes.');
       }
     } finally {
       setSaving(false);
     }
   };
 
-  const handleSaveAppearance = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.patch('/users/settings/appearance/', appearance);
-      showMsg('success', '✓ Appearance settings saved!');
-    } catch {
-      showMsg('error', 'Failed to save appearance settings.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveNotifications = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.patch('/users/settings/notifications/', notifications);
-      showMsg('success', '✓ Notification preferences saved!');
-    } catch {
-      showMsg('error', 'Failed to save notification preferences.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveSecurity = async (e) => {
-    e.preventDefault();
-    if (security.new_password !== security.confirm_password) {
-      showMsg('error', 'New passwords do not match.');
-      return;
-    }
-    setSaving(true);
-    try {
-      await api.patch('/users/settings/security/', {
-        current_password: security.current_password,
-        new_password:     security.new_password,
-        two_factor:       security.two_factor,
-      });
-      setSecurity(prev => ({ ...prev, current_password: '', new_password: '', confirm_password: '' }));
-      showMsg('success', '✓ Security settings updated!');
-    } catch (err) {
-      showMsg('error', err.response?.data?.detail || 'Failed to update security settings.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRevokeAllSessions = async () => {
-    if (!window.confirm('Sign out of all other devices?')) return;
-    try {
-      await api.post('/users/sessions/revoke-all/');
-      showMsg('success', '✓ All other sessions have been revoked.');
-    } catch {
-      showMsg('error', 'Failed to revoke sessions.');
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!window.confirm('This will permanently delete your account. Are you sure?')) return;
-    try {
-      await api.delete('/users/delete/');
-      await logout();
-      navigate('/login', { replace: true });
-    } catch {
-      showMsg('error', 'Failed to delete account. Please contact support.');
-    }
-  };
-
   const handleLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logout();
-      navigate('/login', { replace: true });
-    } catch {
-      navigate('/login', { replace: true });
-    } finally {
-      setLoggingOut(false);
-    }
+    try { await logout(); } finally { navigate('/login', { replace: true }); }
   };
 
-  /* ── Shared feedback banner ── */
-  const Feedback = () => {
-    if (!msg.text) return null;
-    return <div className={`form-${msg.type}`}>{msg.text}</div>;
-  };
-
-  /* ── Toggle component ── */
-  const Toggle = ({ name, checked, onChange }) => (
-    <label className="toggle-switch">
-      <input
-        type="checkbox"
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        disabled={saving}
-      />
-      <span className="toggle-track">
-        <span className="toggle-thumb" />
-      </span>
-    </label>
-  );
-
-  /* ── Setting row component ── */
-  const SettingRow = ({ label, description, children }) => (
-    <div className="setting-row">
-      <div className="setting-info">
-        <span className="setting-label">{label}</span>
-        {description && <span className="setting-desc">{description}</span>}
-      </div>
-      <div className="setting-control">{children}</div>
-    </div>
-  );
-
-  /* ─────────────────────────────────────────── */
+  const avatarSrc = photoPreview || user?.photo || null;
+  const initStr   = initials(user?.full_name, user?.phone_number);
 
   return (
-    <div className="profile-page">
+    <>
+      <style>{CSS}</style>
+      <div className="pp">
 
-      {/* ── Avatar / header ── */}
-      <div className="profile-header">
-        <div className="profile-avatar">
-          {user?.photo
-            ? <img src={user.photo} alt="avatar" />
-            : <span>{(user?.full_name || user?.phone_number)?.[0]?.toUpperCase()}</span>
-          }
-        </div>
-        <div className="profile-meta">
-          <h2>{user?.full_name || user?.phone_number}</h2>
-          <p className="profile-phone">{user?.phone_number}</p>
-          <div className="profile-badges">
-            {isAdmin   && <span className="badge badge-admin">Admin</span>}
-            {isVerified
-              ? <span className="badge badge-verified">✓ Verified</span>
-              : <span className="badge badge-unverified">Unverified</span>
-            }
-            <span className="badge badge-status">{user?.status}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Tabs ── */}
-      <div className="profile-tabs" role="tablist">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`profile-tab${tab === t.id ? ' active' : ''}`}
-            onClick={() => handleTabChange(t.id)}
-          >
-            {t.label}
+        {/* ── Cover backdrop ── */}
+        <div className="pp-cover">
+          <button className="pp-back" onClick={() => navigate(-1)} type="button" aria-label="Go back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
           </button>
-        ))}
-      </div>
 
-      {/* ══════════════ PERSONAL INFO ══════════════ */}
-      {tab === 'profile' && (
-        <form className="profile-form" onSubmit={handleSaveProfile}>
-          <h3>Personal information</h3>
-          <Feedback />
-          <div className="form-grid">
-            <label className="form-label">
-              Full name
-              <input name="full_name" value={form.full_name} onChange={handleFormChange} disabled={saving} />
+          <button className="pp-signout-top" onClick={handleLogout} type="button">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
+
+          {/* Centered avatar */}
+          <div className="pp-cover-center">
+            <label className="pp-avatar-wrap">
+              <input type="file" accept="image/*" onChange={onPhotoChange} hidden />
+              <div className="pp-avatar">
+                {avatarSrc ? <img src={avatarSrc} alt="" /> : <span>{initStr}</span>}
+                <div className="pp-avatar-overlay">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </div>
+              </div>
             </label>
-            <label className="form-label">
-              Birth date
-              <input type="date" name="birth_date" value={form.birth_date || ''} onChange={handleFormChange} disabled={saving} />
-            </label>
-            <label className="form-label">
-              City
-              <input name="city" value={form.city} onChange={handleFormChange} disabled={saving} />
-            </label>
-            <label className="form-label">
-              District
-              <input name="district" value={form.district} onChange={handleFormChange} disabled={saving} />
-            </label>
-            <label className="form-label">
-              Language
-              <select name="language" value={form.language} onChange={handleFormChange} disabled={saving}>
-                <option value="en">English</option>
-                <option value="uz">O'zbek</option>
-                <option value="ru">Русский</option>
-              </select>
-            </label>
-          </div>
-          <div className="profile-actions">
-            <button type="submit" className="btn-primary" disabled={saving || loggingOut}>
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-            <button type="button" className="btn-danger" onClick={handleLogout} disabled={saving || loggingOut}>
-              {loggingOut ? 'Logging out…' : 'Sign out'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* ══════════════ APPEARANCE ══════════════ */}
-      {tab === 'appearance' && (
-        <form className="profile-form" onSubmit={handleSaveAppearance}>
-          <h3>Appearance</h3>
-          <Feedback />
-
-          <p className="settings-section-label">Theme</p>
-          <SettingRow label="Dark mode" description="Switch between light and dark interface">
-            <Toggle name="dark_mode" checked={appearance.dark_mode} onChange={handleAppearanceChange} />
-          </SettingRow>
-          <SettingRow label="Compact layout" description="Reduce spacing for a denser view">
-            <Toggle name="compact_layout" checked={appearance.compact_layout} onChange={handleAppearanceChange} />
-          </SettingRow>
-
-          <p className="settings-section-label">Text size</p>
-          <SettingRow label="Font size" description="Adjust the base text size of the interface">
-            <label className="form-label" style={{ marginBottom: 0 }}>
-              <select
-                name="font_size"
-                value={appearance.font_size}
-                onChange={handleAppearanceChange}
-                disabled={saving}
-                style={{ minWidth: 140 }}
-              >
-                <option value="small">Small (14px)</option>
-                <option value="default">Default (16px)</option>
-                <option value="large">Large (18px)</option>
-              </select>
-            </label>
-          </SettingRow>
-
-          <div className="profile-actions">
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* ══════════════ NOTIFICATIONS ══════════════ */}
-      {tab === 'notifications' && (
-        <form className="profile-form" onSubmit={handleSaveNotifications}>
-          <h3>Notifications</h3>
-          <Feedback />
-
-          <p className="settings-section-label">Channels</p>
-          <SettingRow label="Email notifications" description="Receive updates and alerts via email">
-            <Toggle name="email_notifications" checked={notifications.email_notifications} onChange={handleNotifChange} />
-          </SettingRow>
-          <SettingRow label="SMS notifications" description="Get important alerts to your phone number">
-            <Toggle name="sms_notifications" checked={notifications.sms_notifications} onChange={handleNotifChange} />
-          </SettingRow>
-
-          <p className="settings-section-label">Activity</p>
-          <SettingRow label="Login alerts" description="Notify when a new device signs in to your account">
-            <Toggle name="login_alerts" checked={notifications.login_alerts} onChange={handleNotifChange} />
-          </SettingRow>
-          <SettingRow label="Weekly digest" description="Receive a weekly summary of your activity">
-            <Toggle name="weekly_digest" checked={notifications.weekly_digest} onChange={handleNotifChange} />
-          </SettingRow>
-
-          <div className="profile-actions">
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* ══════════════ SECURITY ══════════════ */}
-      {tab === 'security' && (
-        <form className="profile-form" onSubmit={handleSaveSecurity}>
-          <h3>Security</h3>
-          <Feedback />
-
-          <p className="settings-section-label">Change password</p>
-          <div className="form-grid">
-            <label className="form-label" style={{ gridColumn: '1 / -1' }}>
-              Current password
-              <input
-                type="password"
-                name="current_password"
-                value={security.current_password}
-                onChange={handleSecurityChange}
-                placeholder="••••••••"
-                disabled={saving}
-                autoComplete="current-password"
-              />
-            </label>
-            <label className="form-label">
-              New password
-              <input
-                type="password"
-                name="new_password"
-                value={security.new_password}
-                onChange={handleSecurityChange}
-                placeholder="••••••••"
-                disabled={saving}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="form-label">
-              Confirm password
-              <input
-                type="password"
-                name="confirm_password"
-                value={security.confirm_password}
-                onChange={handleSecurityChange}
-                placeholder="••••••••"
-                disabled={saving}
-                autoComplete="new-password"
-              />
-            </label>
-          </div>
-
-          <p className="settings-section-label">Two-factor authentication</p>
-          <SettingRow label="Enable 2FA" description="Add an extra layer of protection to your account">
-            <Toggle name="two_factor" checked={security.two_factor} onChange={handleSecurityChange} />
-          </SettingRow>
-
-          <p className="settings-section-label">Sessions</p>
-          <SettingRow label="Active sessions" description="Sign out of all other devices">
-            <button
-              type="button"
-              className="btn-danger btn-small"
-              onClick={handleRevokeAllSessions}
-              disabled={saving}
-            >
-              Revoke all
-            </button>
-          </SettingRow>
-
-          <div className="profile-actions">
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Update password'}
-            </button>
-          </div>
-
-          <p className="settings-section-label settings-danger-label">Danger zone</p>
-          <div className="danger-zone">
-            <div className="danger-zone-info">
-              <span className="danger-zone-title">Delete account</span>
-              <span className="danger-zone-desc">
-                Permanently remove your account and all associated data. This cannot be undone.
-              </span>
+            <h1 className="pp-cover-name">{user?.full_name || fmtPhone(user?.phone_number) || 'User'}</h1>
+            <p className="pp-cover-phone">{fmtPhone(user?.phone_number)}</p>
+            <div className="pp-pills">
+              {user?.is_admin    && <span className="pp-pill pill-admin">Admin</span>}
+              {user?.is_verified
+                ? <span className="pp-pill pill-ok">✓ Verified</span>
+                : <span className="pp-pill pill-warn">Unverified</span>}
+              {user?.is_active !== undefined && (
+                user?.is_active
+                  ? <span className="pp-pill pill-active">Active</span>
+                  : <span className="pp-pill pill-off">Inactive</span>)}
+              {user?.status && <span className="pp-pill pill-status">{user.status}</span>}
             </div>
-            <button
-              type="button"
-              className="btn-danger"
-              onClick={handleDeleteAccount}
-              disabled={saving}
-            >
-              Delete account
-            </button>
           </div>
-        </form>
-      )}
+        </div>
 
+        {/* ── Sheet ── */}
+        <form className="pp-sheet" onSubmit={saveProfile}>
+
+          {/* drag handle */}
+          <div className="pp-handle" />
+
+          {/* Flash */}
+          {msg && (
+            <div className={`pp-flash pp-flash--${msg.type}`} role="alert">
+              {msg.type === 'success'
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              }
+              {msg.text}
+            </div>
+          )}
+
+          {/* Rows */}
+          <div className="pp-rows">
+
+            <Row icon="👤" label="First name">
+              <input name="name" value={form.name} onChange={onField}
+                placeholder="Enter first name" disabled={saving} />
+            </Row>
+
+            <Row icon="👤" label="Last name">
+              <input name="surname" value={form.surname} onChange={onField}
+                placeholder="Enter last name" disabled={saving} />
+            </Row>
+
+            <Row icon="🎂" label="Date of birth">
+              <input type="date" name="birth_date" value={form.birth_date}
+                onChange={onField} disabled={saving} />
+            </Row>
+
+            <Row icon="🌐" label="Language">
+              <select name="language" value={form.language} onChange={onField} disabled={saving}>
+                {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+            </Row>
+
+            <Row icon="🏙️" label="City">
+              <input name="city" value={form.city} onChange={onField}
+                placeholder="Your city" disabled={saving} />
+            </Row>
+
+            <Row icon="📍" label="District">
+              <input name="district" value={form.district} onChange={onField}
+                placeholder="Your district" disabled={saving} />
+            </Row>
+
+          </div>
+
+          <button type="submit" className="pp-save" disabled={saving}>
+            {saving ? <><span className="pp-spinner" /> Saqlanmoqda…</> : "O'zgarishlarni saqlash!"}
+          </button>
+
+        </form>
+      </div>
+    </>
+  );
+}
+
+function Row({ icon, label, children }) {
+  return (
+    <div className="pp-row">
+      <div className="pp-row-left">
+        <span className="pp-row-icon">{icon}</span>
+        <span className="pp-row-label">{label}</span>
+      </div>
+      <div className="pp-row-input">{children}</div>
     </div>
   );
 }
+
+/* ════════════════════════════════════════════════ */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.pp {
+  --accent:       #3d9e6b;
+  --accent-dk:    #2e7d52;
+  --accent-lt:    #d0f8d0;
+  --bg:           linear-gradient(160deg, #5effa5 0%, #3d9e6b 100%);
+  --danger:       #ff6b6b;
+  --danger-lt:    rgba(255, 107, 107, 0.12);
+
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Nunito', sans-serif;
+  color: #1a1a1a;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Cover ── */
+.pp-cover {
+  position: relative;
+  background: transparent;
+  padding: 3.5rem 1.5rem 7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pp-back {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.1rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pp-back:hover { background: rgba(255,255,255,0.28); }
+
+.pp-signout-top {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pp-signout-top:hover { background: rgba(255,255,255,0.28); }
+
+.pp-cover-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+/* Avatar */
+.pp-avatar-wrap { cursor: pointer; }
+.pp-avatar {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: 3.5px solid rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+.pp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pp-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.pp-avatar:hover .pp-avatar-overlay,
+.pp-avatar-wrap:focus-within .pp-avatar-overlay { opacity: 1; }
+
+.pp-cover-name {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  text-align: center;
+}
+.pp-cover-phone {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.75);
+  margin: 0;
+}
+
+.pp-pills {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.2rem;
+}
+.pp-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 99px;
+  letter-spacing: 0.02em;
+}
+.pill-admin  { background: rgba(255,255,255,0.2); color: #fff; }
+.pill-ok     { background: rgba(255,255,255,0.2); color: #fff; }
+.pill-warn   { background: rgba(255,220,80,0.3);  color: #fff3b0; }
+.pill-active { background: rgba(255,255,255,0.2); color: #fff; }
+.pill-off    { background: rgba(0,0,0,0.15);       color: rgba(255,255,255,0.6); }
+.pill-status { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); }
+
+/* ── Sheet ── */
+.pp-sheet {
+  background: #f5f5f5;
+  border-radius: 28px 28px 0 0;
+  margin-top: -3rem;
+  flex: 1;
+  padding: 0 0 2rem;
+  display: flex;
+  flex-direction: column;
+}
+.pp-handle {
+  width: 40px;
+  height: 4px;
+  background: #ddd;
+  border-radius: 99px;
+  margin: 12px auto 20px;
+  flex-shrink: 0;
+}
+
+/* Flash */
+.pp-flash {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 1.25rem 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: 14px;
+}
+.pp-flash--success { background: var(--accent-lt); color: var(--accent-dk); }
+.pp-flash--error   { background: var(--danger-lt); color: var(--danger); }
+
+/* Rows */
+.pp-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.pp-row {
+  display: flex;
+  align-items: center;
+  padding: 0 1.25rem;
+  min-height: 62px;
+  border-bottom: 1px solid #ebebeb;
+  gap: 0.75rem;
+}
+.pp-row:last-child { border-bottom: none; }
+
+.pp-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 130px;
+  flex-shrink: 0;
+}
+.pp-row-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.pp-row-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
+
+.pp-row-input { flex: 1; }
+
+.pp-sheet input,
+.pp-sheet select {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid #d8d8d8;
+  border-radius: 0;
+  outline: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #222;
+  font-family: inherit;
+  text-align: right;
+  padding: 0.3rem 0;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.pp-sheet input::placeholder { color: #bbb; }
+.pp-sheet input:focus,
+.pp-sheet select:focus {
+  border-bottom-color: #3d9e6b;
+  color: #222;
+}
+.pp-sheet input:disabled,
+.pp-sheet select:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Save — matches cover gradient exactly */
+.pp-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.25rem 1.25rem 0;
+  padding: 1rem;
+  background: linear-gradient(160deg, #5effa5 0%, #3d9e6b 100%);
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.pp-save:hover:not(:disabled) { opacity: 0.88; }
+.pp-save:active:not(:disabled) { transform: scale(0.985); }
+.pp-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pp-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2.5px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pp-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes pp-spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .pp-cover { padding: 3rem 1rem 6.5rem; }
+  .pp-row-left { width: 110px; }
+  .pp-row-label { font-size: 0.83rem; }
+  .pp-sheet input, .pp-sheet select { font-size: 0.85rem; }
+}
+`;
