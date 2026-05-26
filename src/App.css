@@ -78,6 +78,11 @@
   overflow: hidden;
 }
 
+  .content-area:has(>.nc2){
+  padding: 40px 0 0 0;
+  overflow: hidden;
+}
+
 .page-container {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -125,6 +130,11 @@ body {
   overflow: hidden;
 }
   .content-area:has(>.tc2){
+  padding: 40px 0 0 0;
+  overflow: hidden;
+}
+
+  .content-area:has(>.nc2){
   padding: 40px 0 0 0;
   overflow: hidden;
 }

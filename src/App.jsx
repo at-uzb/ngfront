@@ -9,6 +9,7 @@ import TaskDetail from './components/TaskDetail'
 import Chat from './components/Chat'
 import News from './components/News'
 import TaskCreate from './components/TaskCreate'
+import NewsCreate from './components/NewsCreate'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -99,6 +100,7 @@ function App() {
               <Route path="profile"     element={<Profile />} />
               <Route path="news"        element={<News />} />
               <Route path="task/create" element={<TaskCreate />} />
+              <Route path="news/create" element={<NewsCreate/>}/>
             </Route>
           </Route>
         </Routes>

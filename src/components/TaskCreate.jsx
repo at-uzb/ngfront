@@ -1,14 +1,21 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload, X, FileImage, Loader, Calendar, AlignLeft, Tag, Users, Clock } from 'lucide-react'
+import { Upload, X, FileImage, Calendar, AlignLeft, Tag, Users } from 'lucide-react'
 import api from '../lib/api'
 import { useGroupStore } from '../hooks/useGroupStore'
 
 const PRIORITIES = [
-  { id: 'yuqori', label: 'Yuqori', color: '#e05252', bg: 'rgba(224,82,82,0.12)'  },
-  { id: 'orta',   label: "O'rta",  color: '#d4900a', bg: 'rgba(212,144,10,0.12)' },
-  { id: 'past',   label: 'Past',   color: '#3d9e6b', bg: 'rgba(61,158,107,0.12)' },
+  { id: 'yuqori', label: 'Yuqori', color: '#e05252', bg: 'rgba(224,82,82,0.12)',  hours: 24  },
+  { id: 'orta',   label: "O'rta",  color: '#d4900a', bg: 'rgba(212,144,10,0.12)', hours: 72  },
+  { id: 'past',   label: 'Past',   color: '#3d9e6b', bg: 'rgba(61,158,107,0.12)', hours: 168 },
 ]
+
+const deadlineFor = (priorityId) => {
+  const hours = PRIORITIES.find(p => p.id === priorityId)?.hours ?? 168
+  const dt  = new Date(Date.now() + hours * 60 * 60 * 1000)
+  const pad = n => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+}
 
 export default function TaskCreate() {
   const navigate     = useNavigate()
@@ -16,7 +23,7 @@ export default function TaskCreate() {
   const { groups, selectedId, setSelectedId } = useGroupStore()
 
   const [form, setForm] = useState({
-    name: '', priority: 'orta', assignee: '', deadline: '', description: '',
+    name: '', priority: 'past', deadline: '', description: '',
   })
   const [mediaFiles,  setMediaFiles]  = useState([])
   const [error,       setError]       = useState('')
@@ -25,8 +32,19 @@ export default function TaskCreate() {
   const [dragOver,    setDragOver]    = useState(false)
   const [msg,         setMsg]         = useState(null)
 
+  // Set initial deadline on mount based on default priority
+  useEffect(() => {
+    setForm(f => ({ ...f, deadline: deadlineFor('past') }))
+  }, [])
+
   const patch = (k, v) => {
-    setForm(f => ({ ...f, [k]: v }))
+    setForm(f => {
+      const next = { ...f, [k]: v }
+      if (k === 'priority') {
+        next.deadline = deadlineFor(v)
+      }
+      return next
+    })
     setFieldErrors(fe => ({ ...fe, [k]: '' }))
   }
 
@@ -86,7 +104,6 @@ export default function TaskCreate() {
       fd.append('group_id',    selectedId)
       fd.append('priority',    form.priority)
       fd.append('description', form.description.trim())
-      if (form.assignee) fd.append('responsible_id', form.assignee)
       if (form.deadline) {
         const dt = new Date(form.deadline)
         fd.append('deadline', dt.toISOString().split('.')[0] + 'Z')
@@ -114,8 +131,6 @@ export default function TaskCreate() {
     }
   }
 
-  const activePriority = PRIORITIES.find(p => p.id === form.priority)
-
   return (
     <>
       <style>{CSS}</style>
@@ -131,7 +146,6 @@ export default function TaskCreate() {
           </button>
 
           <div className="tc2-cover-center">
-            {/* Icon circle */}
             <div className="tc2-cover-icon">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -246,24 +260,6 @@ export default function TaskCreate() {
                   type="datetime-local"
                   value={form.deadline}
                   onChange={e => patch('deadline', e.target.value)}
-                  disabled={saving}
-                />
-              </div>
-            </div>
-
-            {/* Assignee */}
-            <div className="tc2-row">
-              <div className="tc2-row-left">
-                <span className="tc2-row-icon"><Clock size={15} strokeWidth={2} /></span>
-                <span className="tc2-row-label">Mas'ul</span>
-              </div>
-              <div className="tc2-row-input">
-                <input
-                  type="text"
-                  maxLength={4}
-                  placeholder="JD"
-                  value={form.assignee}
-                  onChange={e => patch('assignee', e.target.value.toUpperCase())}
                   disabled={saving}
                 />
               </div>
@@ -674,10 +670,43 @@ const CSS = `
 }
 @keyframes tc2-spin { to { transform: rotate(360deg); } }
 
-/* Mobile */
 @media (max-width: 480px) {
   .tc2-cover { padding: 2.5rem 1rem 6rem; }
-  .tc2-row-left { width: 100px; }
+
+  .tc2-row {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    min-height: unset;
+    gap: 6px;
+  }
+
+  .tc2-row-left {
+    width: 100%;
+  }
+
+  .tc2-row-left--top {
+    padding-top: 0;
+  }
+
+  .tc2-row-input {
+    width: 100%;
+  }
+
+  .tc2-chips {
+    justify-content: flex-start !important;
+    gap: 4px;
+  }
+
+  .tc2-sheet input,
+  .tc2-sheet select,
+  .tc2-sheet textarea {
+    text-align: left;
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
   .tc2-row-label { font-size: 0.8rem; }
 }
 `
