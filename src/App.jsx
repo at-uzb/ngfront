@@ -10,6 +10,7 @@ import Chat from './components/Chat'
 import News from './components/News'
 import TaskCreate from './components/TaskCreate'
 import NewsCreate from './components/NewsCreate'
+import NewsDetail from './components/NewsDetail'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -30,6 +31,7 @@ const SECTION_MAP = {
   '/profile':     'Profile',
   '/news':        'Yangiliklar',
   '/task/create': "Topshiriq qo'shish",
+  '/news/create': "Yangilik qo'shish",
 }
 
 const getSectionFromPath = (pathname) => {
@@ -101,6 +103,7 @@ function App() {
               <Route path="news"        element={<News />} />
               <Route path="task/create" element={<TaskCreate />} />
               <Route path="news/create" element={<NewsCreate/>}/>
+              <Route path='news/:slug'  element={<NewsDetail />}/>
             </Route>
           </Route>
         </Routes>
