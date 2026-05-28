@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import { useGroupStore } from '../hooks/useGroupStore'
 import api from '../lib/api'
-import DashboardFilter from './DashboardFilter'
+import DashboardFilter from "./Dashboardfilter"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

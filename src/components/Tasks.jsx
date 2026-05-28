@@ -9,7 +9,7 @@ import { useGroupStore } from '../hooks/useGroupStore'
 import GroupSelector from './GroupSelector'
 import api from '../lib/api'
 import '../assets/Tasks.css'
-import '../assets/DashboardFilter.css'   // ← shared tab styles
+import '../assets/Dashboardfilter.css'   // ← shared tab styles
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
