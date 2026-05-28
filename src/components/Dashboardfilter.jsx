@@ -1,5 +1,5 @@
 import GroupSelector from './GroupSelector'
-import '../assets/DashboardFilter.css'
+import '../assets/Dashboardfilter.css'
 
 const PERIODS = [
   { value: '',              label: 'Barcha vaqt'  },
