@@ -12,7 +12,7 @@ import '../assets/LeftNav.css'
 import logo from '../assets/mlogo.png'
 
 const MAIN_ITEMS = [
-  { path: '/dashboard', name: 'Dashboard',    icon: LayoutGrid,    permission: 'viewDashboard', badge: null },
+  { path: '/dashboard', name: 'Dashboard',    icon: LayoutGrid,    permission: 'viewTasks', badge: null },
   { path: '/tasks',     name: 'Topshiriqlar', icon: CheckSquare,   permission: 'viewTasks',      badge: null   },
   { path: '/news',      name: 'Yangiliklar',  icon: Newspaper, permission: 'viewAnalytics',  badge: null    },
 ]
