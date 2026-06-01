@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import LeftNav from './components/LeftNav'
 import TopNav from './components/TopNav'
 import Dashboard from './components/Dashboard'
@@ -40,7 +40,7 @@ const getSectionFromPath = (pathname) => {
   return prefix ? SECTION_MAP[prefix] : ''
 }
 
-// ─── Role-based default redirect ──────────────────────────────────────────────
+// ─── Role-based default redirect ───────────────────────────────────────────────
 const DefaultRedirect = () => {
   const { isAdmin } = useAuth()
   return <Navigate to={isAdmin ? '/dashboard' : '/tasks'} replace />
@@ -48,10 +48,11 @@ const DefaultRedirect = () => {
 
 // ─── App Shell ─────────────────────────────────────────────────────────────────
 function AppShell() {
-  const location = useLocation()
-  const inline = useInline()
+  const location       = useLocation()
+  const inline         = useInline()
   const currentSection = getSectionFromPath(location.pathname)
-  const { refreshUser, user } = useAuth()
+  const { refreshUser, user, isReady } = useAuth()
+
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -62,7 +63,38 @@ function AppShell() {
     document.body.classList.toggle('dark-mode', darkMode)
   }, [darkMode])
 
+  // Once auth is confirmed, refresh to get latest user data (photo etc.)
+  useEffect(() => {
+    if (isReady) refreshUser()
+  }, [isReady])
+
   const toggleDarkMode = useCallback(() => setDarkMode((d) => !d), [])
+
+  // Block ALL children from mounting until /users/me/ resolves.
+  // This prevents GroupSelector, TopNav, and all page components
+  // from firing API calls before the session cookie is confirmed.
+  if (!isReady) return (
+    <div className={`app ${darkMode ? 'dark' : 'light'}`}>
+      <div style={{
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        minHeight:      '100vh',
+        background:      darkMode ? '#1e2235' : '#f5f7fa',
+      }}>
+        <div style={{
+          width:       28,
+          height:      28,
+          border:      '2.5px solid',
+          borderColor:    darkMode ? 'rgba(120,130,255,0.2)' : 'rgba(0,0,0,0.1)',
+          borderTopColor: darkMode ? '#818cf8'               : '#6366f1',
+          borderRadius: '50%',
+          animation:    'spin 0.7s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    </div>
+  )
 
   return (
     <div className={`app ${darkMode ? 'dark' : 'light'}`}>
@@ -74,11 +106,10 @@ function AppShell() {
           darkMode={darkMode}
           inline={inline}
           toggleDarkMode={toggleDarkMode}
-          onUserRefresh={refreshUser} 
-          user={user}          
+          onUserRefresh={refreshUser}
+          user={user}
         />
         <div className="content-area">
-          {/* Outlet renders the matched child route — AppShell never remounts */}
           <Outlet />
         </div>
       </div>
@@ -86,7 +117,7 @@ function AppShell() {
   )
 }
 
-// ─── App Root ──────────────────────────────────────────────────────────────────
+// ─── App Root ───────────────────────────────────────────────────────────────────
 function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -102,8 +133,8 @@ function App() {
               <Route path="profile"     element={<Profile />} />
               <Route path="news"        element={<News />} />
               <Route path="task/create" element={<TaskCreate />} />
-              <Route path="news/create" element={<NewsCreate/>}/>
-              <Route path='news/:slug'  element={<NewsDetail />}/>
+              <Route path="news/create" element={<NewsCreate />} />
+              <Route path="news/:slug"  element={<NewsDetail />} />
             </Route>
           </Route>
         </Routes>

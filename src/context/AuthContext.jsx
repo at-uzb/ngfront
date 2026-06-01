@@ -19,11 +19,11 @@ export const useAuthContext = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error,   setError]   = useState(null);
 
-  // ─── logout defined first ──────────────────────────────────────────────────
+  // ─── logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     setLoading(true);
     try {
@@ -42,9 +42,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // ─── Initial session restore ───────────────────────────────────────────────
-  // Always calls /users/me/ — the HttpOnly cookie is sent automatically
-  // by the browser. Server is the single source of truth for session validity.
-  // No localStorage gate, no cookie sniffing — just ask the server.
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -53,14 +50,12 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setError(null);
       } catch (err) {
-        // 401 = no valid session, stay logged out silently
-        // 5xx / network error = also fail silently, don't boot the user
         if (err.status !== 401) {
           console.error('Failed to restore session:', err);
         }
         setUser(null);
       } finally {
-        setLoading(false);
+        setLoading(false); // ← isReady becomes true after this
       }
     };
 
@@ -68,7 +63,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // ─── Auth actions ──────────────────────────────────────────────────────────
-
   const login = useCallback(async (credentials) => {
     setLoading(true);
     setError(null);
@@ -93,13 +87,13 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = useCallback(async () => {
     try {
-      const response = await authService.getCurrentUser()
-      const userData = response.user ?? response
-      setUser(userData)
+      const response = await authService.getCurrentUser();
+      const userData = response.user ?? response;
+      setUser(userData);
     } catch (err) {
-      console.error('refreshUser failed:', err)
+      console.error('refreshUser failed:', err);
     }
-  }, [])
+  }, []);
 
   // ─── Context value ─────────────────────────────────────────────────────────
   const value = useMemo(
@@ -111,10 +105,11 @@ export const AuthProvider = ({ children }) => {
       logout,
       updateUser,
       refreshUser,
+      isReady:         !loading,           // ← true once /users/me/ resolves
       isAuthenticated: !!user,
-      isAdmin: user?.is_admin === true,
-      isVerified: user?.is_verified === true,
-      isTasker: user?.status === 'tasker',
+      isAdmin:         user?.is_admin   === true,
+      isVerified:      user?.is_verified === true,
+      isTasker:        user?.status     === 'tasker',
     }),
     [user, loading, error, login, logout, updateUser, refreshUser]
   );

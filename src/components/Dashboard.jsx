@@ -15,11 +15,31 @@ const PRIORITY_LABELS = {
   past:   'Past',
 }
 
-// Light colors stay the same; dark overrides are handled via CSS
 const PRIORITY_COLORS = {
   yuqori: { bg: '#fef3c7', text: '#d97706', dot: '#f59e0b', darkBg: 'rgba(245,158,11,0.15)', darkText: '#fbbf24' },
   orta:   { bg: '#dbeafe', text: '#2563eb', dot: '#3b82f6', darkBg: 'rgba(59,130,246,0.15)',  darkText: '#93c5fd' },
   past:   { bg: '#dcfce7', text: '#16a34a', dot: '#22c55e', darkBg: 'rgba(16,185,129,0.15)', darkText: '#6ee7b7' },
+}
+
+// Full Uzbek month names — uz-UZ locale is broken in most browsers
+const UZ_MONTHS = [
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+  'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+]
+
+const fmtDateUz = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getDate()} ${UZ_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+// Translates "7d 4h 12m" → "7k 4s 12d" (kun / soat / daqiqa)
+const translateDuration = (raw) => {
+  if (!raw) return raw
+  return raw
+    .replace(/(\d+)\s*d/, '$1k')
+    .replace(/(\d+)\s*h/, '$1s')
+    .replace(/(\d+)\s*m/, '$1d')
 }
 
 function parseTimeLeft(timeLeft) {
@@ -60,7 +80,9 @@ const CountdownBar = ({ timeLeft }) => {
       <div className="countdown-bar-track">
         <div className={`countdown-bar-fill ${level}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`countdown-label ${level}`}>{timeLeft}</span>
+      <span className={`countdown-label ${level}`}>
+        {translateDuration(timeLeft)}
+      </span>
     </div>
   )
 }
@@ -82,13 +104,16 @@ const CustomTooltip = ({ active, payload, label }) => {
 // ── Priority chip — dark-aware ────────────────────────────────────────────────
 const PriorityChip = ({ priority, isDark }) => {
   const colors = PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.orta
-  const bg   = isDark ? colors.darkBg   : colors.bg
-  const text = isDark ? colors.darkText : colors.text
+  const bg     = isDark ? colors.darkBg   : colors.bg
+  const text   = isDark ? colors.darkText : colors.text
   return (
     <span
       className="priority-chip"
-      style={{ background: bg, color: text,
-               ...(isDark && { border: `0.5px solid ${colors.darkBg.replace('0.15', '0.3')}` }) }}
+      style={{
+        background: bg,
+        color: text,
+        ...(isDark && { border: `0.5px solid ${colors.darkBg.replace('0.15', '0.3')}` }),
+      }}
     >
       <span className="priority-dot" style={{ background: isDark ? colors.darkText : colors.dot }} />
       {PRIORITY_LABELS[priority] ?? priority}
@@ -101,11 +126,13 @@ const PriorityChip = ({ priority, isDark }) => {
 const Dashboard = () => {
   const { selectedGroup, loading: groupLoading } = useGroupStore()
 
-  const [period, setPeriod]   = useState('')
-  const [data, setData]       = useState(null)
+  const [period,  setPeriod]  = useState('')
+  const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState(null)
-  const [isDark, setIsDark]   = useState(() => document.documentElement.closest('.dark') !== null || document.body.classList.contains('dark-mode'))
+  const [error,   setError]   = useState(null)
+  const [isDark,  setIsDark]  = useState(
+    () => document.querySelector('.app')?.classList.contains('dark') ?? false
+  )
 
   // Sync dark state when .dark class toggled on .app
   useEffect(() => {
@@ -136,6 +163,8 @@ const Dashboard = () => {
 
   useEffect(() => { fetchAnalytics() }, [fetchAnalytics])
 
+  // ── Derived chart data ────────────────────────────────────────────────────
+
   const lineData = (() => {
     if (!data) return []
     const map = {}
@@ -156,6 +185,8 @@ const Dashboard = () => {
   ] : []
 
   const runningOut = data ? Object.values(data.tasks_running_out) : []
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -180,13 +211,15 @@ const Dashboard = () => {
 
         {data && !loading && (
           <>
+            {/* ── Stat Cards ── */}
             <div className="stats-grid">
-              <StatCard icon="⚡" label="Faol topshiriqlar"        value={data.active_tasks}  accent="#f59e0b" />
-              <StatCard icon="⏳" label="Kutilayotganlar"           value={data.pending_tasks} accent="#3b82f6" />
-              <StatCard icon="🕐" label="O'rtacha hal qilish vaqti" value={data.avg_time}      accent="#8b5cf6" />
-              <StatCard icon="✅" label="O'z vaqtida hal qilingan"  value={data.in_time}       accent="#10b981" />
+              <StatCard icon="⚡" label="Faol topshiriqlar"        value={data.active_tasks}                  accent="#f59e0b" />
+              <StatCard icon="⏳" label="Kutilayotganlar"           value={data.pending_tasks}                 accent="#3b82f6" />
+              <StatCard icon="🕐" label="O'rtacha hal qilish vaqti" value={translateDuration(data.avg_time)}  accent="#8b5cf6" />
+              <StatCard icon="✅" label="O'z vaqtida hal qilingan"  value={data.in_time}                      accent="#10b981" />
             </div>
 
+            {/* ── Charts ── */}
             <div className="charts-grid">
               <div className="chart-card">
                 <h3 className="chart-title">Vaqt bo'yicha topshiriqlar</h3>
@@ -219,6 +252,7 @@ const Dashboard = () => {
               </div>
             </div>
 
+            {/* ── Running out ── */}
             <div className="running-out-card">
               <h3 className="chart-title">
                 Muddati yaqinlashayotgan topshiriqlar
@@ -236,11 +270,7 @@ const Dashboard = () => {
                           <span className="task-index">{i + 1}</span>
                           <div className="task-info">
                             <span className="task-name">{task.name}</span>
-                            <span className="task-meta">
-                              {new Date(task.created_at).toLocaleDateString('uz-UZ', {
-                                day: '2-digit', month: 'short', year: 'numeric'
-                              })}
-                            </span>
+                            <span className="task-meta">{fmtDateUz(task.created_at)}</span>
                           </div>
                         </div>
                         <div className="task-row-right">
@@ -259,17 +289,19 @@ const Dashboard = () => {
         {!data && !loading && !error && (
           <div className="overlay muted"><p>Guruhni tanlang 👆</p></div>
         )}
+
       </div>
     </>
   )
 }
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Light tokens (default) ── */
+/* ── Light tokens ── */
 .dash {
   --dash-bg:          #f5f7fa;
   --dash-surface:     #ffffff;
@@ -293,7 +325,7 @@ const CSS = `
   color: var(--dash-text);
 }
 
-/* ── Dark tokens — scoped to .dark parent ── */
+/* ── Dark tokens ── */
 .dark .dash {
   --dash-bg:          #1e2235;
   --dash-surface:     #252a3d;
@@ -310,7 +342,6 @@ const CSS = `
 .dash-filter {
   display: flex;
   align-items: center;
-  gap: 0;
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
   border-radius: var(--dash-radius);
@@ -336,8 +367,8 @@ const CSS = `
   color: var(--dash-text-muted);
 }
 
-.dash-filter-control { width: 100%; }
-.dash-filter-control > * { width: 100% !important; }
+.dash-filter-control       { width: 100%; }
+.dash-filter-control > *   { width: 100% !important; }
 
 .dash-filter-divider {
   width: 1px;
@@ -434,7 +465,7 @@ const CSS = `
   font-size: 1.3rem;
 }
 
-.stat-body { display: flex; flex-direction: column; gap: 3px; }
+.stat-body  { display: flex; flex-direction: column; gap: 3px; }
 .stat-label { font-size: 0.73rem; font-weight: 500; color: var(--dash-text-muted); line-height: 1.3; }
 .stat-value { font-size: 1.65rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--dash-text); }
 
@@ -528,7 +559,8 @@ const CSS = `
 .dark .task-row.critical { background: rgba(239,68,68,0.05); }
 .dark .task-row.warning  { background: rgba(245,158,11,0.04); }
 
-.task-row-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.task-row-left  { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.task-row-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 
 .task-index {
   font-family: 'DM Mono', monospace;
@@ -539,7 +571,7 @@ const CSS = `
   flex-shrink: 0;
 }
 
-.task-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.task-info  { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 .task-name {
   font-size: 0.88rem;
@@ -551,7 +583,6 @@ const CSS = `
 }
 
 .task-meta { font-size: 0.72rem; color: var(--dash-text-muted); }
-.task-row-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 
 /* ── Priority chip ── */
 .priority-chip {
