@@ -1,13 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload, X, FileImage, Loader, AlignLeft, Tag, Clock, Image } from 'lucide-react'
+import { Upload, X, FileImage, AlignLeft, Image } from 'lucide-react'
 import api from '../lib/api'
-
-const STATUSES = [
-  { id: 'draft',     label: 'Qoralama', color: '#888',    bg: 'rgba(136,136,136,0.12)' },
-  { id: 'published', label: 'Chop etish', color: '#3d9e6b', bg: 'rgba(61,158,107,0.12)' },
-  { id: 'archived',  label: 'Arxiv',    color: '#d4900a', bg: 'rgba(212,144,10,0.12)'  },
-]
 
 export default function NewsCreate() {
   const navigate      = useNavigate()
@@ -15,10 +9,10 @@ export default function NewsCreate() {
   const galleryRef    = useRef(null)
 
   const [form, setForm] = useState({
-    title: '', content: '', status: 'draft', published_at: '',
+    title: '', content: '',
   })
-  const [thumbnail,    setThumbnail]    = useState(null)   // { file, preview }
-  const [galleryFiles, setGalleryFiles] = useState([])     // [{ id, file, preview }]
+  const [thumbnail,    setThumbnail]    = useState(null)
+  const [galleryFiles, setGalleryFiles] = useState([])
   const [fieldErrors,  setFieldErrors]  = useState({})
   const [saving,       setSaving]       = useState(false)
   const [dragOver,     setDragOver]     = useState(false)
@@ -89,11 +83,6 @@ export default function NewsCreate() {
       const fd = new FormData()
       fd.append('title',   form.title.trim())
       fd.append('content', form.content.trim())
-      fd.append('status',  form.status)
-      if (form.published_at) {
-        const dt = new Date(form.published_at)
-        fd.append('published_at', dt.toISOString().split('.')[0] + 'Z')
-      }
       if (thumbnail) fd.append('thumbnail_file', thumbnail.file)
       galleryFiles.forEach(({ file }) => fd.append('gallery_files', file))
 
@@ -163,7 +152,9 @@ export default function NewsCreate() {
             {/* Title */}
             <div className="nc2-row nc2-row--tall">
               <div className="nc2-row-left">
-                <span className="nc2-row-icon"><Tag size={15} strokeWidth={2} /></span>
+                <span className="nc2-row-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                </span>
                 <span className="nc2-row-label">Sarlavha <span className="nc2-req">*</span></span>
               </div>
               <div className="nc2-row-input">
@@ -177,53 +168,6 @@ export default function NewsCreate() {
                   disabled={saving}
                 />
                 {fieldErrors.title && <span className="nc2-ferr">{fieldErrors.title}</span>}
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="nc2-row">
-              <div className="nc2-row-left">
-                <span className="nc2-row-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                </span>
-                <span className="nc2-row-label">Holat</span>
-              </div>
-              <div className="nc2-row-input nc2-chips">
-                {STATUSES.map(s => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={`nc2-chip${form.status === s.id ? ' sel' : ''}`}
-                    style={form.status === s.id
-                      ? { background: s.bg, color: s.color, borderColor: s.color }
-                      : { borderColor: '#e0e0e0', color: '#888' }
-                    }
-                    onClick={() => patch('status', s.id)}
-                    disabled={saving}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Published at */}
-            <div className="nc2-row">
-              <div className="nc2-row-left">
-                <span className="nc2-row-icon"><Clock size={15} strokeWidth={2} /></span>
-                <span className="nc2-row-label">Chop vaqti</span>
-              </div>
-              <div className="nc2-row-input">
-                <input
-                  type="datetime-local"
-                  value={form.published_at}
-                  onChange={e => patch('published_at', e.target.value)}
-                  disabled={saving}
-                />
               </div>
             </div>
 
@@ -571,30 +515,6 @@ const CSS = `
 
 .nc2-ferr { font-size: 11px; color: var(--danger); }
 
-/* ── Status chips ── */
-.nc2-chips {
-  flex-direction: row !important;
-  gap: 6px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.nc2-chip {
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-family: inherit;
-  padding: 0.2rem 0.75rem;
-  border-radius: 99px;
-  border: 1.5px solid;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s;
-  opacity: 0.55;
-}
-.nc2-chip.sel    { opacity: 1; }
-.nc2-chip:hover  { opacity: 0.85; }
-.nc2-chip:disabled { cursor: not-allowed; opacity: 0.3; }
-
 /* ── Thumbnail ── */
 .nc2-thumb-wrap {
   position: relative;
@@ -759,8 +679,6 @@ const CSS = `
   .nc2-row-left        { width: 100%; }
   .nc2-row-left--top   { padding-top: 0; }
   .nc2-row-input       { width: 100%; }
-
-  .nc2-chips { justify-content: flex-start !important; gap: 4px; }
 
   .nc2-sheet input,
   .nc2-sheet textarea {
