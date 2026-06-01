@@ -14,18 +14,13 @@ const Login = () => {
   const { login, isAuthenticated, error: authError } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
+    setFormData(prev => ({ ...prev, [name]: value }));
     setLocalError('');
   };
 
@@ -33,7 +28,7 @@ const Login = () => {
     e.preventDefault();
     
     if (!formData.phone_number || !formData.password) {
-      setLocalError('Please fill in all fields');
+      setLocalError('Iltimos, barcha maydonlarni to\'ldiring');
       return;
     }
 
@@ -48,7 +43,7 @@ const Login = () => {
     if (result.success) {
       navigate('/dashboard');
     } else {
-      setLocalError(result.error || 'Login failed. Please check your credentials.');
+      setLocalError(result.error || 'Kirish amalga oshmadi. Iltimos, ma\'lumotlarni tekshiring.');
     }
     
     setLoading(false);
@@ -59,7 +54,7 @@ const Login = () => {
       <div className="login-card">
         <div className="login-header">
           <h2>MetroTask</h2>
-          <p>Welcome back! Please login to your account</p>
+          <p>Xush kelibsiz! Hisobingizga kiring</p>
         </div>
         
         {(localError || authError) && (
@@ -70,28 +65,28 @@ const Login = () => {
         
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="phone_number">Phone Number</label>
+            <label htmlFor="phone_number">Telefon raqam</label>
             <input
               type="tel"
               id="phone_number"
               name="phone_number"
               value={formData.phone_number}
               onChange={handleChange}
-              placeholder="Enter your phone number"
+              placeholder="Telefon raqamingizni kiriting"
               disabled={loading}
               autoComplete="tel"
             />
           </div>
           
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Parol</label>
             <input
               type="password"
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter your password"
+              placeholder="Parolingizni kiriting"
               disabled={loading}
               autoComplete="current-password"
             />
@@ -102,14 +97,10 @@ const Login = () => {
             className="login-button"
             disabled={loading}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Kirilmoqda...' : 'Kirish'}
           </button>
         </form>
         
-        <div className="login-footer">
-          <p>Demo credentials:</p>
-          <code>Phone_number: +998935166555</code>
-        </div>
       </div>
     </div>
   );
