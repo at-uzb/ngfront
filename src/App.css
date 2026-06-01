@@ -1,24 +1,156 @@
-* {
+/* ── App.css ─────────────────────────────────────────────── */
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html { scroll-behavior: smooth; }
+
+body {
+  transition: background-color 0.3s ease;
+  overflow-x: hidden;
+}
+
+/* ── Theme tokens — scoped to .app ──────────────────────── */
+.app.light {
+  --bg-app:       #f5f7fa;
+  --bg-surface:   #ffffff;
+  --bg-card:      #ffffff;
+  --text-primary: #111111;
+  --text-muted:   #888888;
+  --text-subtle:  #bbbbbb;
+  --border:       rgba(0, 0, 0, 0.07);
+  --border-glow:  none;
+  --accent:       #6366f1;
+  --accent-muted: rgba(99, 102, 241, 0.12);
+
+  /* forward --t-* so Tasks.css vars resolve correctly */
+  --t-bg:        #ffffff;
+  --t-surface:   #f5f5f5;
+  --t-border:    rgba(0, 0, 0, 0.07);
+  --t-border-md: rgba(0, 0, 0, 0.14);
+  --t-text:      #111111;
+  --t-muted:     #888888;
+  --t-subtle:    #bbbbbb;
+  --t-hover:     #f0f0f0;
+
+  --t-urgent-bg:   #fcebeb;
+  --t-urgent-text: #a32d2d;
+  --t-blue-bg:     #e6f1fb;
+  --t-blue-text:   #185fa5;
+  --t-gold-bg:     #faeeda;
+  --t-gold-text:   #854f0b;
+  --t-green-bg:    #eaf3de;
+  --t-green-text:  #3b6d11;
+
+  /* forward --nav-* */
+  --nav-bg:              #fafafa;
+  --nav-border:          rgba(0, 0, 0, 0.07);
+  --nav-text:            #111111;
+  --nav-muted:           #999999;
+  --nav-subtle:          #cccccc;
+  --nav-hover-bg:        #f0f0f0;
+  --nav-active-bg:       #f0f0f0;
+  --nav-active-bar:      #6366f1;
+  --nav-active-text:     #111111;
+  --nav-divider:         rgba(0, 0, 0, 0.06);
+  --nav-badge-bg:        #ebebeb;
+  --nav-badge-text:      #999999;
+  --nav-badge-active-bg: #6366f1;
+  --nav-badge-active-text: #ffffff;
+
+  /* forward --topnav-* */
+  --topnav-bg:            #ffffff;
+  --topnav-border:        rgba(0, 0, 0, 0.07);
+  --topnav-text:          #111111;
+  --topnav-muted:         #aaaaaa;
+  --topnav-hover-bg:      #f5f5f5;
+  --topnav-hover-border:  rgba(0, 0, 0, 0.07);
+  --topnav-divider:       rgba(0, 0, 0, 0.07);
+  --topnav-avatar-bg:     #f0f0f0;
+  --topnav-avatar-border: rgba(0, 0, 0, 0.07);
+  --topnav-avatar-text:   #888888;
+  --topnav-dot:           #e24b4a;
+  --topnav-dot-border:    #ffffff;
+
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+.app.dark {
+  --bg-app:       #1e2235;
+  --bg-surface:   #252a3d;
+  --bg-card:      #252a3d;
+  --text-primary: #e8eaf6;
+  --text-muted:   #5a6890;
+  --text-subtle:  #3a4060;
+  --border:       rgba(120, 130, 255, 0.18);
+  --border-glow:  0 0 0 1px rgba(120,130,255,0.12), 0 0 14px rgba(99,102,241,0.10);
+  --accent:       #818cf8;
+  --accent-muted: rgba(99, 102, 241, 0.12);
+
+  /* forward --t-* */
+  --t-bg:        #252a3d;
+  --t-surface:   #1e2235;
+  --t-border:    rgba(120, 130, 255, 0.15);
+  --t-border-md: rgba(120, 130, 255, 0.28);
+  --t-text:      #e8eaf6;
+  --t-muted:     #5a6890;
+  --t-subtle:    #3a4060;
+  --t-hover:     rgba(99, 102, 241, 0.08);
+
+  --t-urgent-bg:   rgba(163, 45, 45, 0.15);
+  --t-urgent-text: #f87171;
+  --t-blue-bg:     rgba(24, 95, 165, 0.15);
+  --t-blue-text:   #93c5fd;
+  --t-gold-bg:     rgba(133, 79, 11, 0.15);
+  --t-gold-text:   #fbbf24;
+  --t-green-bg:    rgba(59, 109, 17, 0.15);
+  --t-green-text:  #86efac;
+
+  /* forward --nav-* */
+  --nav-bg:              #1e2235;
+  --nav-border:          rgba(120, 130, 255, 0.18);
+  --nav-text:            #e8eaf6;
+  --nav-muted:           #5a6890;
+  --nav-subtle:          #3a4060;
+  --nav-hover-bg:        rgba(99, 102, 241, 0.07);
+  --nav-active-bg:       rgba(99, 102, 241, 0.12);
+  --nav-active-bar:      #818cf8;
+  --nav-active-text:     #c7c9ff;
+  --nav-divider:         rgba(120, 130, 255, 0.10);
+  --nav-badge-bg:        rgba(99, 102, 241, 0.15);
+  --nav-badge-text:      #818cf8;
+  --nav-badge-active-bg: rgba(99, 102, 241, 0.25);
+  --nav-badge-active-text: #c7c9ff;
+
+  /* forward --topnav-* */
+  --topnav-bg:            #252a3d;
+  --topnav-border:        rgba(120, 130, 255, 0.18);
+  --topnav-text:          #e8eaf6;
+  --topnav-muted:         #4a5080;
+  --topnav-hover-bg:      rgba(99, 102, 241, 0.08);
+  --topnav-hover-border:  rgba(120, 130, 255, 0.20);
+  --topnav-divider:       rgba(120, 130, 255, 0.12);
+  --topnav-avatar-bg:     rgba(99, 102, 241, 0.15);
+  --topnav-avatar-border: rgba(120, 130, 255, 0.30);
+  --topnav-avatar-text:   #818cf8;
+  --topnav-dot:           #f87171;
+  --topnav-dot-border:    #252a3d;
+
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+/* ── App shell ───────────────────────────────────────────── */
 .app {
   display: flex;
   min-height: 100vh;
   transition: background-color 0.3s ease, color 0.3s ease;
   position: relative;
-}
-
-.app.light {
-  background-color: #f5f5f5;
-  color: #333;
-}
-
-.app.dark {
-  background-color: #1a1a1a;
-  color: #fff;
 }
 
 .main-content {
@@ -29,129 +161,64 @@
   transition: margin-left 0.3s ease;
 }
 
-@media (min-width: 1025px) {
-  .main-content {
-    margin-left: 225px;
-  }
-}
+@media (min-width: 1025px)                        { .main-content { margin-left: 225px; } }
+@media (min-width: 769px) and (max-width: 1024px) { .main-content { margin-left: 80px;  } }
+@media (max-width: 768px)                         { .main-content { margin-left: 0; padding-bottom: 70px; } }
 
-@media (min-width: 769px) and (max-width: 1024px) {
-  .main-content {
-    margin-left: 80px;
-  }
-}
-
-@media (max-width: 768px) {
-  .main-content {
-    margin-left: 0;
-    padding-bottom: 70px;
-  }
-}
-
+/* ── Content area ────────────────────────────────────────── */
 .content-area {
   display: flex;
   padding: 60px 0;
   flex-direction: column;
 }
-.content-area:has(> .chat-container) {
+
+.content-area:has(> .chat-container),
+.content-area:has(> .td-container),
+.content-area:has(> .tc2),
+.content-area:has(> .pp),
+.content-area:has(> .nc2) {
   padding: 50px 0 0 0;
   overflow: hidden;
 }
 
-.content-area:has(> .td-container){
-  padding: 50px 0 0 0;
-  overflow: hidden;
-}
-
-.content-area:has(>.tc2){
-  padding: 50px 0 0 0;
-  overflow: hidden;
-}
-
-.content-area:has(>.dash){
+.content-area:has(> .dash) {
   padding: 60px 0 0 0;
   overflow: hidden;
 }
 
-.content-area:has(>.pp){
-  padding: 50px 0 0 0;
-  overflow: hidden;
-}
-
-  .content-area:has(>.nc2){
-  padding: 40px 0 0 0;
-  overflow: hidden;
-}
-
+/* ── Page container ──────────────────────────────────────── */
 .page-container {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  box-shadow: var(--border-glow);
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-.dark .page-container {
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
+.page-container h2 { margin-bottom: 15px; color: var(--text-primary); }
+.page-container p  { line-height: 1.6;    color: var(--text-primary); }
 
-.page-container h2 {
-  margin-bottom: 15px;
-  color: inherit;
-}
-
-.page-container p {
-  line-height: 1.6;
-  color: inherit;
-}
-
-body.dark-mode {
-  background-color: #1a1a1a;
-}
-
-body {
-  transition: background-color 0.3s ease;
-  overflow-x: hidden;
-}
-
+/* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .content-area {
-    padding: 60px 0 60px 0;
-  }
-  
-  .page-container {
-    padding: 15px;
-  }
-  .content-area:has(>.pp){
-  padding: 40px 0 0 0;
-  overflow: hidden;
-}
-  .content-area:has(>.tc2){
-  padding: 40px 0 0 0;
-  overflow: hidden;
-}
+  .content-area { padding: 60px 0 60px 0; }
 
-  .content-area:has(>.nc2){
-  padding: 40px 0 0 0;
-  overflow: hidden;
-}
-}
+  .content-area:has(> .pp),
+  .content-area:has(> .tc2),
+  .content-area:has(> .nc2) {
+    padding: 40px 0 0 0;
+    overflow: hidden;
+  }
 
-html {
-  scroll-behavior: smooth;
+  .page-container { padding: 15px; }
 }
 
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .mobile-bottom-nav {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  
+  .mobile-bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
   @media (max-width: 768px) {
-    .main-content {
-      padding-bottom: calc(70px + env(safe-area-inset-bottom));
-    }
+    .main-content { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
   }
 }

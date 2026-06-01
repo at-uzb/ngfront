@@ -15,9 +15,7 @@ export default function DashboardFilter({ period, onPeriodChange }) {
   return (
     <div className="df-wrap">
 
-      {/* Group selector — bare, same as Tasks.jsx */}
       <div className="df-row">
-        <span className="df-label">Xizmat</span>
         <GroupSelector />
       </div>
 
@@ -25,7 +23,6 @@ export default function DashboardFilter({ period, onPeriodChange }) {
 
       {/* Period tabs — full width row */}
       <div className="df-row">
-        <span className="df-label">Davr</span>
         <div className="df-period-tabs">
           {PERIODS.map(p => (
             <button

@@ -9,22 +9,22 @@ import { useGroupStore } from '../hooks/useGroupStore'
 import GroupSelector from './GroupSelector'
 import api from '../lib/api'
 import '../assets/Tasks.css'
-import '../assets/Dashboardfilter.css'   // ← shared tab styles
+import '../assets/Dashboardfilter.css'
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
 
 const ADD_TASK_GROUPS = ['NX', 'NGZ', 'NTS']
 
 const TIMELINE_OPTIONS = [
-  { id: '',             label: 'Barcha vaqt'      },
-  { id: 'last_week',    label: 'Oxirgi hafta'     },
-  { id: 'last_month',   label: 'Oxirgi oy'        },
-  { id: 'past_3_months',label: "So'nggi uch oy"   },
-  { id: 'year',         label: 'Yil'              },
-  { id: 'past',         label: "Muddati o'tgan"   },
+  { id: '',              label: 'Barcha vaqt'     },
+  { id: 'last_week',     label: 'Oxirgi hafta'    },
+  { id: 'last_month',    label: 'Oxirgi oy'       },
+  { id: 'past_3_months', label: "So'nggi uch oy"  },
+  { id: 'year',          label: 'Yil'             },
+  { id: 'past',          label: "Muddati o'tgan"  },
 ]
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 const fmtDate = (iso) =>
   iso
@@ -45,20 +45,20 @@ const isSameDay = (iso, offsetDays = 0) => {
   )
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function Tasks() {
   const { user, isAdmin, isTasker } = useAuth()
-  const navigate = useNavigate()
-  const { selectedGroup } = useGroupStore()
+  const navigate                    = useNavigate()
+  const { selectedGroup }           = useGroupStore()
 
-  const [tasks,       setTasks]       = useState([])
-  const [stats,       setStats]       = useState({})
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState(null)
-  const [query,       setQuery]       = useState('')
-  const [timeline,    setTimeline]    = useState('')
-  const [groupBy,     setGroupBy]     = useState(false)
+  const [tasks,         setTasks]         = useState([])
+  const [stats,         setStats]         = useState({})
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState(null)
+  const [query,         setQuery]         = useState('')
+  const [timeline,      setTimeline]      = useState('')
+  const [exportLoading, setExportLoading] = useState(false)
 
   const searchRef = useRef(null)
 
@@ -66,7 +66,7 @@ export default function Tasks() {
     isAdmin || isTasker ||
     ADD_TASK_GROUPS.includes(selectedGroup?.short_name ?? user?.group?.short_name)
 
-  const [exportLoading, setExportLoading] = useState(false)
+  // ── Export ─────────────────────────────────────────────────────────────────
 
   const handleExport = useCallback(async () => {
     const groupShortName = selectedGroup?.short_name
@@ -75,7 +75,7 @@ export default function Tasks() {
     try {
       const params = new URLSearchParams({ group_name: groupShortName })
       if (timeline) params.set('timeline', timeline)
-      const res = await api.get(`/tasks/xl-tasks/?${params}`, { responseType: 'blob' })
+      const res  = await api.get(`/tasks/xl-tasks/?${params}`, { responseType: 'blob' })
       const url  = URL.createObjectURL(new Blob([res.data]))
       const link = document.createElement('a')
       link.href     = url
@@ -98,13 +98,12 @@ export default function Tasks() {
     setError(null)
     try {
       const params = new URLSearchParams()
-      if (selectedGroup && selectedGroup.id !== 'ALL') params.set('group', selectedGroup.id)
+      if (selectedGroup?.id !== 'ALL') params.set('group', selectedGroup?.id)
       if (query)    params.set('search',   query)
       if (timeline) params.set('timeline', timeline)
-      if (groupBy)  params.set('group_by', 'group')
 
-      const { data } = await api.get(`/tasks/kts/?${params}`)
-      const payload = data.results ?? data
+      const { data }  = await api.get(`/tasks/kts/?${params}`)
+      const payload   = data.results ?? data
       setTasks(payload.results ?? [])
       setStats(payload.stats   ?? {})
     } catch {
@@ -112,7 +111,7 @@ export default function Tasks() {
     } finally {
       setLoading(false)
     }
-  }, [selectedGroup?.id, query, timeline, groupBy])
+  }, [selectedGroup?.id, query, timeline])
 
   useEffect(() => {
     if (!selectedGroup) return
@@ -122,7 +121,7 @@ export default function Tasks() {
 
   // ── Delete ─────────────────────────────────────────────────────────────────
 
-  const deleteTask = async (id, e) => {
+  const deleteTask = useCallback(async (id, e) => {
     e.stopPropagation()
     if (!window.confirm("Topshiriqni o'chirishni tasdiqlaysizmi?")) return
     try {
@@ -132,9 +131,9 @@ export default function Tasks() {
     } catch {
       fetchTasks()
     }
-  }
+  }, [fetchTasks])
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
 
   const total      = stats.total       ?? 0
   const upcoming   = stats.upcoming    ?? 0
@@ -142,8 +141,8 @@ export default function Tasks() {
   const noDeadline = stats.no_deadline ?? 0
   const dueToday   = stats.due_today   ?? 0
 
-  const upcomingTasks   = tasks.filter(t => !t.is_overdue && t.deadline)
-  const overdueTasks    = tasks.filter(t => t.is_overdue)
+  const upcomingTasks   = tasks.filter(t => !t.is_overdue &&  t.deadline)
+  const overdueTasks    = tasks.filter(t =>  t.is_overdue)
   const noDeadlineTasks = tasks.filter(t => !t.deadline)
 
   const activeTimelineLabel = TIMELINE_OPTIONS.find(t => t.id === timeline)?.label
@@ -153,13 +152,18 @@ export default function Tasks() {
   return (
     <div className="topshiriqlar">
 
-      {/* ── Filter card — same df-wrap style as Dashboard ── */}
+      {/* ── Filter bar ── */}
       <div className="df-wrap">
         <div className="df-row">
           <GroupSelector />
           <div className="t-filter-actions">
             {isAdmin && (
-              <button className="t-add-btn" onClick={handleExport} disabled={exportLoading}>
+              <button
+                className="t-add-btn"
+                onClick={handleExport}
+                disabled={exportLoading}
+                title="Excel yuklash"
+              >
                 {exportLoading
                   ? <Loader2 size={13} strokeWidth={2} className="t-spin" />
                   : <FileSpreadsheet size={13} strokeWidth={2} />
@@ -168,14 +172,20 @@ export default function Tasks() {
               </button>
             )}
             {canAdd && (
-              <button className="t-add-btn" onClick={() => navigate('/task/create/')}>
+              <button
+                className="t-add-btn"
+                onClick={() => navigate('/task/create/')}
+                title="Topshiriq qo'shish"
+              >
                 <Plus size={13} strokeWidth={2.5} />
                 <span className="t-btn-lbl">Qo'shish</span>
               </button>
             )}
           </div>
         </div>
+
         <div className="df-divider" />
+
         <div className="df-row">
           <div className="df-period-tabs">
             {TIMELINE_OPTIONS.map(opt => (
@@ -227,7 +237,7 @@ export default function Tasks() {
       </div>
 
       {/* ── Group breakdown ── */}
-      {groupBy && stats.by_group && Object.keys(stats.by_group).length > 0 && (
+      {stats.by_group && Object.keys(stats.by_group).length > 0 && (
         <GroupBreakdown data={stats.by_group} />
       )}
 
@@ -247,6 +257,7 @@ export default function Tasks() {
             <button
               className="t-search-clear"
               onClick={() => { setQuery(''); searchRef.current?.focus() }}
+              aria-label="Tozalash"
             >
               <X size={10} />
             </button>
@@ -283,8 +294,9 @@ export default function Tasks() {
             {upcomingTasks.length > 0 && (
               <Section title="Faol" count={upcomingTasks.length}>
                 {upcomingTasks.map(t => (
-                  <TaskCard key={t.id} task={t}
-                    onEdit={() => navigate(`/task/${t.id}/edit/`)}
+                  <TaskCard
+                    key={t.id}
+                    task={t}
                     onDelete={deleteTask}
                     onClick={() => navigate(`/tasks/${t.id}`)}
                   />
@@ -294,8 +306,9 @@ export default function Tasks() {
             {overdueTasks.length > 0 && (
               <Section title="Muddati o'tgan" count={overdueTasks.length} variant="overdue">
                 {overdueTasks.map(t => (
-                  <TaskCard key={t.id} task={t}
-                    onEdit={() => navigate(`/task/${t.id}/edit/`)}
+                  <TaskCard
+                    key={t.id}
+                    task={t}
                     onDelete={deleteTask}
                     onClick={() => navigate(`/tasks/${t.id}`)}
                   />
@@ -305,8 +318,9 @@ export default function Tasks() {
             {noDeadlineTasks.length > 0 && (
               <Section title="Muddatsiz" count={noDeadlineTasks.length} variant="muted">
                 {noDeadlineTasks.map(t => (
-                  <TaskCard key={t.id} task={t}
-                    onEdit={() => navigate(`/task/${t.id}/edit/`)}
+                  <TaskCard
+                    key={t.id}
+                    task={t}
                     onDelete={deleteTask}
                     onClick={() => navigate(`/tasks/${t.id}`)}
                   />
@@ -316,11 +330,12 @@ export default function Tasks() {
           </>
         )}
       </div>
+
     </div>
   )
 }
 
-// ── GroupBreakdown ────────────────────────────────────────────────────────────
+// ── GroupBreakdown ─────────────────────────────────────────────────────────────
 
 function GroupBreakdown({ data }) {
   return (
@@ -328,7 +343,7 @@ function GroupBreakdown({ data }) {
       <div className="t-breakdown-ttl">Guruhlar bo'yicha</div>
       <div className="t-breakdown-grid">
         {Object.entries(data).map(([short, g]) => {
-          const pct = g.total ? Math.round(g.upcoming / g.total * 100) : 0
+          const pct = g.total ? Math.round((g.upcoming / g.total) * 100) : 0
           return (
             <div key={short} className="t-bd-card">
               <div className="t-bd-head">
@@ -359,9 +374,9 @@ function GroupBreakdown({ data }) {
   )
 }
 
-// ── Section ───────────────────────────────────────────────────────────────────
+// ── Section ────────────────────────────────────────────────────────────────────
 
-function Section({ title, count, children, variant }) {
+function Section({ title, count, variant, children }) {
   return (
     <div className={`t-section${variant ? ` ${variant}` : ''}`}>
       <div className="t-sec-head">
@@ -374,22 +389,22 @@ function Section({ title, count, children, variant }) {
   )
 }
 
-// ── TaskCard ──────────────────────────────────────────────────────────────────
+// ── TaskCard ───────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, onEdit, onDelete, onClick }) {
+function TaskCard({ task, onDelete, onClick }) {
   const isOverdue = task.is_overdue
   const isTodayDl = isSameDay(task.deadline, 0)
   const isTomorDl = isSameDay(task.deadline, 1)
 
   const dlLabel = isOverdue  ? `⚠ ${fmtDate(task.deadline)}`
-    : isTodayDl ? 'Bugun'
-    : isTomorDl ? 'Ertaga'
-    : fmtDate(task.deadline)
+                : isTodayDl  ? 'Bugun'
+                : isTomorDl  ? 'Ertaga'
+                : fmtDate(task.deadline)
 
-  const dlMod = isOverdue  ? 'over'
-    : isTodayDl ? 'today'
-    : isTomorDl ? 'tmrw'
-    : ''
+  const dlMod   = isOverdue  ? 'over'
+                : isTodayDl  ? 'today'
+                : isTomorDl  ? 'tmrw'
+                : ''
 
   return (
     <div
@@ -421,6 +436,18 @@ function TaskCard({ task, onEdit, onDelete, onClick }) {
           )}
         </div>
       </div>
+
+      {onDelete && (
+        <div className="t-actions">
+          <button
+            className="t-act-btn del"
+            onClick={e => onDelete(task.id, e)}
+            title="O'chirish"
+          >
+            <X size={11} strokeWidth={2} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

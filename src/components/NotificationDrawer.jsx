@@ -2,7 +2,8 @@ import { useEffect, useRef, useCallback } from 'react'
 import { X, Bell, CheckCheck, Info, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react'
 import '../assets/NotificationDrawer.css'
 import { useNavigate } from 'react-router-dom'
-// ── Icon per notification type ──────────────────────────────────────────────
+
+// ── Icon per notification type ─────────────────────────────────────────────
 const TYPE_ICON = {
   info:    <Info size={14} strokeWidth={1.8} />,
   warning: <AlertTriangle size={14} strokeWidth={1.8} />,
@@ -12,9 +13,9 @@ const TYPE_ICON = {
 
 const typeIcon = (type) => TYPE_ICON[type] ?? TYPE_ICON.info
 
-// ── Relative time helper ────────────────────────────────────────────────────
+// ── Relative time helper ───────────────────────────────────────────────────
 const relativeTime = (isoString) => {
-  const diff = Date.now() - new Date(isoString).getTime()
+  const diff  = Date.now() - new Date(isoString).getTime()
   const mins  = Math.floor(diff / 60_000)
   const hours = Math.floor(diff / 3_600_000)
   const days  = Math.floor(diff / 86_400_000)
@@ -25,7 +26,7 @@ const relativeTime = (isoString) => {
   return new Date(isoString).toLocaleDateString()
 }
 
-// ── Component ───────────────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────────────
 const NotificationDrawer = ({
   open,
   onClose,
@@ -37,7 +38,13 @@ const NotificationDrawer = ({
 }) => {
   const drawerRef  = useRef(null)
   const touchStart = useRef(null)
-  const navigate = useNavigate()
+  const navigate   = useNavigate()
+
+  // Read the current theme from .app so tokens resolve correctly
+  // since the drawer renders outside the .app div tree (fixed positioning)
+  const isDark = document.querySelector('.app')?.classList.contains('dark')
+  const themeClass = isDark ? 'dark' : 'light'
+
   // Close on Escape
   useEffect(() => {
     if (!open) return
@@ -52,7 +59,7 @@ const NotificationDrawer = ({
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  // ── Touch swipe-right to close ───────────────────────────────────────────
+  // ── Touch swipe-right to close ────────────────────────────────────────────
   const handleTouchStart = useCallback((e) => {
     touchStart.current = e.touches[0].clientX
   }, [])
@@ -60,7 +67,7 @@ const NotificationDrawer = ({
   const handleTouchEnd = useCallback((e) => {
     if (touchStart.current === null) return
     const delta = e.changedTouches[0].clientX - touchStart.current
-    if (delta > 60) onClose()               // swiped right ≥ 60 px → close
+    if (delta > 60) onClose()
     touchStart.current = null
   }, [onClose])
 
@@ -70,7 +77,7 @@ const NotificationDrawer = ({
     <>
       {/* ── Backdrop ── */}
       <div
-        className={`nd-backdrop ${open ? 'nd-backdrop--visible' : ''}`}
+        className={`nd-backdrop ${themeClass} ${open ? 'nd-backdrop--visible' : ''}`}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -78,13 +85,14 @@ const NotificationDrawer = ({
       {/* ── Drawer ── */}
       <aside
         ref={drawerRef}
-        className={`nd-drawer ${open ? 'nd-drawer--open' : ''}`}
+        className={`nd-drawer ${themeClass} ${open ? 'nd-drawer--open' : ''}`}
         aria-label="Notifications"
         aria-hidden={!open}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Header */}
+
+        {/* ── Header ── */}
         <div className="nd-header">
           <div className="nd-header-left">
             <Bell size={15} strokeWidth={1.8} className="nd-header-icon" />
@@ -104,14 +112,19 @@ const NotificationDrawer = ({
                 <span>Mark all read</span>
               </button>
             )}
-            <button className="nd-close" onClick={onClose} aria-label="Close notifications">
+            <button
+              className="nd-close"
+              onClick={onClose}
+              aria-label="Close notifications"
+            >
               <X size={16} strokeWidth={1.8} />
             </button>
           </div>
         </div>
 
-        {/* Body */}
+        {/* ── Body ── */}
         <div className="nd-body">
+
           {loading && (
             <div className="nd-state">
               <div className="nd-spinner" />
@@ -139,7 +152,11 @@ const NotificationDrawer = ({
               {notifications.map((n) => (
                 <li
                   key={n.id}
-                  className={`nd-item ${!n.is_read ? 'nd-item--unread' : ''} nd-item--${n.type ?? 'info'}`}
+                  className={[
+                    'nd-item',
+                    !n.is_read          ? 'nd-item--unread'       : '',
+                    `nd-item--${n.type ?? 'info'}`,
+                  ].filter(Boolean).join(' ')}
                   onClick={() => {
                     if (!n.is_read) onMarkRead(n.id)
                     if ((n.type === 'info' || n.type === 'success') && n.data?.task_id) {
@@ -173,6 +190,7 @@ const NotificationDrawer = ({
               ))}
             </ul>
           )}
+
         </div>
       </aside>
     </>

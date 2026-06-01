@@ -89,13 +89,13 @@ export default function Profile() {
         updateUser({ ...user, ...(res.data.user ?? res.data) });
       }
       setPhotoFile(null);
-      flash('success', "Muvaffaqiyatli saqlandi!");
+      flash('success', "O'zgarishlar muvaffaqiyatli saqlandi!");
     } catch (err) {
       if (err.response?.status === 401) {
-        flash('error', 'Session expired, redirecting…');
+        flash('error', 'Sessiya tugadi, yo\'naltirilmoqda…');
         setTimeout(() => { logout(); navigate('/login'); }, 2000);
       } else {
-        flash('error', err.response?.data?.detail || err.response?.data?.message || 'Could not save changes.');
+        flash('error', err.response?.data?.detail || err.response?.data?.message || 'O\'zgarishlarni saqlashda xatolik.');
       }
     } finally {
       setSaving(false);
@@ -116,14 +116,14 @@ export default function Profile() {
 
         {/* ── Cover backdrop ── */}
         <div className="pp-cover">
-          <button className="pp-back" onClick={() => navigate(-1)} type="button" aria-label="Go back">
+          <button className="pp-back" onClick={() => navigate(-1)} type="button" aria-label="Orqaga">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
           </button>
 
-          <button className="pp-signout-top" onClick={handleLogout} type="button">
+          <button className="pp-signout-top" onClick={handleLogout} type="button" aria-label="Chiqish">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -147,17 +147,17 @@ export default function Profile() {
                 </div>
               </div>
             </label>
-            <h1 className="pp-cover-name">{user?.full_name || fmtPhone(user?.phone_number) || 'User'}</h1>
+            <h1 className="pp-cover-name">{user?.full_name || fmtPhone(user?.phone_number) || 'Foydalanuvchi'}</h1>
             <p className="pp-cover-phone">{fmtPhone(user?.phone_number)}</p>
             <div className="pp-pills">
               {user?.is_admin    && <span className="pp-pill pill-admin">Admin</span>}
               {user?.is_verified
-                ? <span className="pp-pill pill-ok">✓ Verified</span>
-                : <span className="pp-pill pill-warn">Unverified</span>}
+                ? <span className="pp-pill pill-ok">✓ Tasdiqlangan</span>
+                : <span className="pp-pill pill-warn">Tasdiqlanmagan</span>}
               {user?.is_active !== undefined && (
                 user?.is_active
-                  ? <span className="pp-pill pill-active">Active</span>
-                  : <span className="pp-pill pill-off">Inactive</span>)}
+                  ? <span className="pp-pill pill-active">Faol</span>
+                  : <span className="pp-pill pill-off">Nofaol</span>)}
               {user?.status && <span className="pp-pill pill-status">{user.status}</span>}
             </div>
           </div>
@@ -183,41 +183,41 @@ export default function Profile() {
           {/* Rows */}
           <div className="pp-rows">
 
-            <Row icon="👤" label="First name">
+            <Row icon="👤" label="Ism">
               <input name="name" value={form.name} onChange={onField}
-                placeholder="Enter first name" disabled={saving} />
+                placeholder="Ismingizni kiriting" disabled={saving} />
             </Row>
 
-            <Row icon="👤" label="Last name">
+            <Row icon="👤" label="Familiya">
               <input name="surname" value={form.surname} onChange={onField}
-                placeholder="Enter last name" disabled={saving} />
+                placeholder="Familiyangizni kiriting" disabled={saving} />
             </Row>
 
-            <Row icon="🎂" label="Date of birth">
+            <Row icon="🎂" label="Tug'ilgan sana">
               <input type="date" name="birth_date" value={form.birth_date}
                 onChange={onField} disabled={saving} />
             </Row>
 
-            <Row icon="🌐" label="Language">
+            <Row icon="🌐" label="Til">
               <select name="language" value={form.language} onChange={onField} disabled={saving}>
                 {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </Row>
 
-            <Row icon="🏙️" label="City">
+            <Row icon="🏙️" label="Shahar">
               <input name="city" value={form.city} onChange={onField}
-                placeholder="Your city" disabled={saving} />
+                placeholder="Shahringiz" disabled={saving} />
             </Row>
 
-            <Row icon="📍" label="District">
+            <Row icon="📍" label="Tuman">
               <input name="district" value={form.district} onChange={onField}
-                placeholder="Your district" disabled={saving} />
+                placeholder="Tumaningiz" disabled={saving} />
             </Row>
 
           </div>
 
           <button type="submit" className="pp-save" disabled={saving}>
-            {saving ? <><span className="pp-spinner" /> Saqlanmoqda…</> : "O'zgarishlarni saqlash!"}
+            {saving ? <><span className="pp-spinner" /> Saqlanmoqda…</> : "O'zgarishlarni saqlash"}
           </button>
 
         </form>
@@ -244,58 +244,49 @@ const CSS = `
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* ── Tokens ── */
 .pp {
-  --accent:       #3d9e6b;
-  --accent-dk:    #2e7d52;
-  --accent-lt:    #d0f8d0;
-  --bg:           linear-gradient(160deg, #5effa5 0%, #3d9e6b 100%);
-  --danger:       #ff6b6b;
-  --danger-lt:    rgba(255, 107, 107, 0.12);
+  --pp-accent:      #6366f1;
+  --pp-accent-dk:   #4338ca;
+  --pp-accent-lt:   #eef2ff;
+  --pp-cover-from:  #818cf8;
+  --pp-cover-to:    #4f46e5;
+  --pp-danger:      #f87171;
+  --pp-danger-lt:   rgba(248, 113, 113, 0.12);
 
   width: 100%;
   min-height: 100vh;
   font-family: 'Nunito', sans-serif;
   color: #1a1a1a;
-  background: var(--bg);
+  background: linear-gradient(145deg, var(--pp-cover-from) 0%, var(--pp-cover-to) 100%);
   display: flex;
   flex-direction: column;
   position: relative;
+}
+
+/* Dark sheet + input overrides */
+.dark .pp {
+  --pp-cover-from:  #4c4faa;
+  --pp-cover-to:    #312e81;
+  --pp-accent-lt:   rgba(99, 102, 241, 0.15);
+  --pp-accent-dk:   #a5b4fc;
 }
 
 /* ── Cover ── */
 .pp-cover {
   position: relative;
-  background: transparent;
   padding: 3.5rem 1.5rem 7rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  background: linear-gradient(145deg, var(--pp-cover-from) 0%, var(--pp-cover-to) 100%);
 }
 
-.pp-back {
-  position: absolute;
-  top: 1.1rem;
-  left: 1.1rem;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.18);
-  border: none;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.pp-back:hover { background: rgba(255,255,255,0.28); }
-
+.pp-back,
 .pp-signout-top {
   position: absolute;
   top: 1.1rem;
-  right: 1.1rem;
-  width: 38px;
-  height: 38px;
+  width: 38px; height: 38px;
   border-radius: 50%;
   background: rgba(255,255,255,0.18);
   border: none;
@@ -306,7 +297,10 @@ const CSS = `
   cursor: pointer;
   transition: background 0.15s;
 }
-.pp-signout-top:hover { background: rgba(255,255,255,0.28); }
+.pp-back         { left: 1.1rem; }
+.pp-signout-top  { right: 1.1rem; }
+.pp-back:hover,
+.pp-signout-top:hover { background: rgba(255,255,255,0.3); }
 
 .pp-cover-center {
   display: flex;
@@ -318,13 +312,13 @@ const CSS = `
 
 /* Avatar */
 .pp-avatar-wrap { cursor: pointer; }
+
 .pp-avatar {
   position: relative;
-  width: 90px;
-  height: 90px;
+  width: 90px; height: 90px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  border: 3.5px solid rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.2);
+  border: 3.5px solid rgba(255,255,255,0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -333,12 +327,13 @@ const CSS = `
   color: #fff;
   overflow: hidden;
   margin-bottom: 0.5rem;
+  transition: border-color 0.15s;
 }
 .pp-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .pp-avatar-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.38);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -356,10 +351,11 @@ const CSS = `
   color: #fff;
   margin: 0;
   text-align: center;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 .pp-cover-phone {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.72);
   margin: 0;
 }
 
@@ -377,33 +373,40 @@ const CSS = `
   border-radius: 99px;
   letter-spacing: 0.02em;
 }
-.pill-admin  { background: rgba(255,255,255,0.2); color: #fff; }
-.pill-ok     { background: rgba(255,255,255,0.2); color: #fff; }
-.pill-warn   { background: rgba(255,220,80,0.3);  color: #fff3b0; }
-.pill-active { background: rgba(255,255,255,0.2); color: #fff; }
-.pill-off    { background: rgba(0,0,0,0.15);       color: rgba(255,255,255,0.6); }
-.pill-status { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); }
+.pill-admin  { background: rgba(255,255,255,0.22); color: #fff; }
+.pill-ok     { background: rgba(255,255,255,0.22); color: #fff; }
+.pill-warn   { background: rgba(255, 220, 80, 0.3); color: #fff3b0; }
+.pill-active { background: rgba(255,255,255,0.22); color: #fff; }
+.pill-off    { background: rgba(0,0,0,0.18);        color: rgba(255,255,255,0.6); }
+.pill-status { background: rgba(255,255,255,0.16);  color: rgba(255,255,255,0.8); }
 
 /* ── Sheet ── */
 .pp-sheet {
-  background: #f5f5f5;
+  background: #f5f7fa;
   border-radius: 28px 28px 0 0;
   margin-top: -3rem;
   flex: 1;
   padding: 0 0 2rem;
   display: flex;
   flex-direction: column;
+  z-index:2;
 }
+
+.dark .pp-sheet {
+  background: #1e2235;
+}
+
 .pp-handle {
-  width: 40px;
-  height: 4px;
+  width: 40px; height: 4px;
   background: #ddd;
   border-radius: 99px;
   margin: 12px auto 20px;
   flex-shrink: 0;
 }
 
-/* Flash */
+.dark .pp-handle { background: rgba(120,130,255,0.2); }
+
+/* ── Flash ── */
 .pp-flash {
   display: flex;
   align-items: center;
@@ -414,24 +417,32 @@ const CSS = `
   font-weight: 600;
   border-radius: 14px;
 }
-.pp-flash--success { background: var(--accent-lt); color: var(--accent-dk); }
-.pp-flash--error   { background: var(--danger-lt); color: var(--danger); }
-
-/* Rows */
-.pp-rows {
-  display: flex;
-  flex-direction: column;
+.pp-flash--success {
+  background: var(--pp-accent-lt);
+  color: var(--pp-accent-dk);
 }
+.pp-flash--error {
+  background: var(--pp-danger-lt);
+  color: var(--pp-danger);
+}
+
+/* ── Rows ── */
+.pp-rows { display: flex; flex-direction: column; }
 
 .pp-row {
   display: flex;
   align-items: center;
   padding: 0 1.25rem;
   min-height: 62px;
-  border-bottom: 1px solid #ebebeb;
+  border-bottom: 0.5px solid #ebebeb;
   gap: 0.75rem;
+  transition: background 0.12s;
 }
 .pp-row:last-child { border-bottom: none; }
+.pp-row:focus-within { background: rgba(99,102,241,0.04); }
+
+.dark .pp-row { border-bottom-color: rgba(120,130,255,0.1); }
+.dark .pp-row:focus-within { background: rgba(99,102,241,0.06); }
 
 .pp-row-left {
   display: flex;
@@ -453,15 +464,17 @@ const CSS = `
   color: #333;
   white-space: nowrap;
 }
+.dark .pp-row-label { color: #e8eaf6; }
 
 .pp-row-input { flex: 1; }
 
+/* Inputs */
 .pp-sheet input,
 .pp-sheet select {
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1.5px solid #d8d8d8;
+  border-bottom: 1.5px solid #ddd;
   border-radius: 0;
   outline: none;
   font-size: 0.9rem;
@@ -478,13 +491,23 @@ const CSS = `
 .pp-sheet input::placeholder { color: #bbb; }
 .pp-sheet input:focus,
 .pp-sheet select:focus {
-  border-bottom-color: #3d9e6b;
-  color: #222;
+  border-bottom-color: var(--pp-accent);
 }
 .pp-sheet input:disabled,
 .pp-sheet select:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* Save — matches cover gradient exactly */
+.dark .pp-sheet input,
+.dark .pp-sheet select {
+  color: #e8eaf6;
+  border-bottom-color: rgba(120,130,255,0.2);
+}
+.dark .pp-sheet input::placeholder { color: #3a4060; }
+.dark .pp-sheet input:focus,
+.dark .pp-sheet select:focus {
+  border-bottom-color: #818cf8;
+}
+
+/* ── Save button ── */
 .pp-save {
   display: flex;
   align-items: center;
@@ -492,7 +515,7 @@ const CSS = `
   gap: 0.5rem;
   margin: 1.25rem 1.25rem 0;
   padding: 1rem;
-  background: linear-gradient(160deg, #5effa5 0%, #3d9e6b 100%);
+  background: linear-gradient(145deg, var(--pp-cover-from) 0%, var(--pp-cover-to) 100%);
   color: #fff;
   border: none;
   border-radius: 18px;
@@ -502,14 +525,19 @@ const CSS = `
   cursor: pointer;
   text-shadow: 0 1px 2px rgba(0,0,0,0.15);
   transition: opacity 0.15s, transform 0.1s;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
 }
-.pp-save:hover:not(:disabled) { opacity: 0.88; }
+.pp-save:hover:not(:disabled)  { opacity: 0.88; }
 .pp-save:active:not(:disabled) { transform: scale(0.985); }
-.pp-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.pp-save:disabled              { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
+.dark .pp-save {
+  box-shadow: 0 4px 16px rgba(49,46,129,0.5);
+}
+
+/* ── Spinner ── */
 .pp-spinner {
-  width: 15px;
-  height: 15px;
+  width: 15px; height: 15px;
   border: 2.5px solid rgba(255,255,255,0.35);
   border-top-color: #fff;
   border-radius: 50%;
@@ -520,9 +548,10 @@ const CSS = `
 
 /* ── Mobile ── */
 @media (max-width: 480px) {
-  .pp-cover { padding: 3rem 1rem 6.5rem; }
-  .pp-row-left { width: 110px; }
-  .pp-row-label { font-size: 0.83rem; }
-  .pp-sheet input, .pp-sheet select { font-size: 0.85rem; }
+  .pp-cover      { padding: 3rem 1rem 6.5rem; }
+  .pp-row-left   { width: 110px; }
+  .pp-row-label  { font-size: 0.83rem; }
+  .pp-sheet input,
+  .pp-sheet select { font-size: 0.85rem; }
 }
 `;

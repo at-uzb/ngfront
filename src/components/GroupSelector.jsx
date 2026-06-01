@@ -265,7 +265,11 @@ export default function GroupSelector() {
                     {group.id !== 'ALL' && (
                       <span
                         className="group-selector__option-badge"
-                        style={{ background: color + '22', color }}
+                        style={{
+                          background: color + '22',
+                          color,
+                          border: `0.5px solid ${color}44`,
+                        }}
                       >
                         {group.short_name}
                       </span>

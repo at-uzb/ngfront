@@ -9,10 +9,11 @@ import {
 } from 'lucide-react'
 import { useRole } from '../hooks/useRole'
 import '../assets/LeftNav.css'
+import logo from '../assets/mlogo.png'
 
 const MAIN_ITEMS = [
   { path: '/dashboard', name: 'Dashboard',    icon: LayoutGrid,    permission: 'viewDashboard', badge: null },
-  { path: '/tasks',     name: 'Topshiriqlar', icon: CheckSquare,   permission: 'viewTasks',      badge: 12   },
+  { path: '/tasks',     name: 'Topshiriqlar', icon: CheckSquare,   permission: 'viewTasks',      badge: null   },
   { path: '/news',      name: 'Yangiliklar',  icon: Newspaper, permission: 'viewAnalytics',  badge: null    },
 ]
 
@@ -33,21 +34,27 @@ export default function LeftNav({ user }) {
 
         <div className="nav-logo">
           <div className="nav-logo-mark">
-            <svg width="15" height="15" fill="none" stroke="#fff" strokeWidth="2"
+            {/* <svg width="15" height="15" fill="none" stroke="#fff" strokeWidth="2"
               strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
               <rect x="3" y="3" width="18" height="18" rx="4"/>
               <path d="M3 9h18M9 21V9"/>
-            </svg>
+            </svg> */}
+            <img 
+              alt='Site logo' 
+              src={logo} 
+              style={{ width: '30px', height: '30px', objectFit: 'contain' }}
+            />
+
           </div>
           <div>
-            <div className="nav-logo-name">MetroTask</div>
-            <div className="nav-logo-sub">Workspace</div>
+            <div className="nav-logo-name">MTopshiriq</div>
+            <div className="nav-logo-sub">Boshqaruv tizimi</div>
           </div>
         </div>
 
         {visibleMain.length > 0 && (
           <>
-            <p className="nav-section-label">Main</p>
+            <p className="nav-section-label">Asosiy</p>
             <ul className="nav-menu">
               {visibleMain.map(({ path, name, icon: Icon, badge }) => (
                 <li key={path}>
@@ -69,7 +76,7 @@ export default function LeftNav({ user }) {
 
         {visibleAccount.length > 0 && (
           <>
-            <p className="nav-section-label">Account</p>
+            <p className="nav-section-label">Akkount</p>
             <ul className="nav-menu">
               {visibleAccount.map(({ path, name, icon: Icon }) => (
                 <li key={path}>
@@ -89,16 +96,19 @@ export default function LeftNav({ user }) {
         <div className="nav-spacer" />
         <div className="nav-divider" />
 
-        <div className="nav-user">
-          <div className="nav-avatar">
-            {user?.initials ?? 'ME'}
-          </div>
-          <div className="nav-user-info">
-            <div className="nav-user-name">{user?.name ?? 'My Account'}</div>
-            <div className="nav-user-role">{user?.role ?? 'Member'}</div>
-          </div>
-          <MoreHorizontal size={14} color="#bbb" />
+      <a href="https://t.me/fulminar"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="nav-support"
+      >
+        <div className="nav-support-icon">
+          <MessageSquare size={14} strokeWidth={1.8} />
         </div>
+        <div className="nav-user-info">
+          <div className="nav-user-name">Yordam kerakmi?</div>
+          <div className="nav-user-role">Telegram orqali bog'laning</div>
+        </div>
+      </a>
 
       </nav>
 

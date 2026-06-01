@@ -1,5 +1,32 @@
-/* ── Overlay ─────────────────────────────────────────────────────────────── */
+/* ── NewsModal.css ───────────────────────────────────────── */
 
+/* Light tokens */
+.light .nm-modal {
+  --nm-bg:       #ffffff;
+  --nm-surface:  #f5f5f5;
+  --nm-border:   rgba(0, 0, 0, 0.07);
+  --nm-text:     #111111;
+  --nm-muted:    #999999;
+  --nm-subtle:   #cccccc;
+  --nm-hover:    #f0f0f0;
+  --nm-error:    #a32d2d;
+  --nm-error-bg: #fcebeb;
+}
+
+/* Dark tokens */
+.dark .nm-modal {
+  --nm-bg:       #252a3d;
+  --nm-surface:  #1e2235;
+  --nm-border:   rgba(120, 130, 255, 0.18);
+  --nm-text:     #e8eaf6;
+  --nm-muted:    #5a6890;
+  --nm-subtle:   #3a4060;
+  --nm-hover:    rgba(99, 102, 241, 0.08);
+  --nm-error:    #f87171;
+  --nm-error-bg: rgba(163, 45, 45, 0.15);
+}
+
+/* ── Overlay ─────────────────────────────────────────────── */
 .nm-overlay {
   position: fixed;
   inset: 0;
@@ -11,10 +38,10 @@
   animation: nmOverlayIn 0.18s ease;
 }
 
+.dark .nm-overlay { background: rgba(0, 0, 0, 0.65); }
+
 @media (min-width: 600px) {
-  .nm-overlay {
-    align-items: center;
-  }
+  .nm-overlay { align-items: center; }
 }
 
 @keyframes nmOverlayIn {
@@ -22,22 +49,35 @@
   to   { opacity: 1; }
 }
 
-/* ── Modal ───────────────────────────────────────────────────────────────── */
-
+/* ── Modal ───────────────────────────────────────────────── */
 .nm-modal {
-  background: var(--bg-primary, #fff);
+  background: var(--nm-bg);
   border-radius: 14px 14px 0 0;
   width: 100%;
   max-height: 92dvh;
   overflow-y: auto;
   animation: nmSlideUp 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  scrollbar-width: thin;
+  scrollbar-color: var(--nm-border) transparent;
 }
+
+.dark .nm-modal {
+  box-shadow: 0 0 0 1px rgba(120,130,255,0.15), 0 -8px 32px rgba(0,0,0,0.4);
+}
+
+.nm-modal::-webkit-scrollbar       { width: 4px; }
+.nm-modal::-webkit-scrollbar-track { background: transparent; }
+.nm-modal::-webkit-scrollbar-thumb { background: var(--nm-border); border-radius: 4px; }
 
 @media (min-width: 600px) {
   .nm-modal {
-    border-radius: 12px;
+    border-radius: 14px;
     max-width: 640px;
     max-height: 88dvh;
+  }
+
+  .dark .nm-modal {
+    box-shadow: 0 0 0 1px rgba(120,130,255,0.15), 0 24px 48px rgba(0,0,0,0.5);
   }
 }
 
@@ -46,17 +86,16 @@
   to   { transform: translateY(0);    opacity: 1; }
 }
 
-/* ── Topbar ──────────────────────────────────────────────────────────────── */
-
+/* ── Topbar ──────────────────────────────────────────────── */
 .nm-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  border-bottom: 0.5px solid var(--nm-border);
   position: sticky;
   top: 0;
-  background: var(--bg-primary, #fff);
+  background: var(--nm-bg);
   z-index: 1;
 }
 
@@ -65,74 +104,76 @@
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: var(--text-muted, #888);
+  color: var(--nm-muted);
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 2px 4px;
-  transition: color 0.15s;
+  padding: 4px 6px;
+  border-radius: 7px;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
 }
 
 .nm-back:hover {
-  color: var(--text-primary, #111);
+  background: var(--nm-hover);
+  color: var(--nm-text);
 }
 
 .nm-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 28px; height: 28px;
   border-radius: 7px;
-  border: 1px solid var(--border-color, #e5e5e5);
+  border: 0.5px solid var(--nm-border);
   background: transparent;
-  color: var(--text-muted, #888);
+  color: var(--nm-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .nm-close:hover {
-  background: var(--bg-hover, #f5f5f5);
-  color: var(--text-primary, #111);
+  background: var(--nm-hover);
+  color: var(--nm-text);
+  border-color: var(--nm-border);
 }
 
-/* ── States ──────────────────────────────────────────────────────────────── */
-
+/* ── States ──────────────────────────────────────────────── */
 .nm-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   padding: 3rem 1rem;
-  color: var(--text-muted, #bbb);
+  color: var(--nm-muted);
   font-size: 13px;
+  font-family: inherit;
 }
 
-.nm-state p { margin: 0; }
-
-.nm-state--error { color: var(--text-danger, #e55); }
+.nm-state p { margin: 0; color: var(--nm-muted); }
+.nm-state--error       { color: var(--nm-error); }
+.nm-state--error p     { color: var(--nm-error); }
 
 .nm-retry {
   margin-top: 4px;
-  padding: 5px 14px;
+  height: 28px;
+  padding: 0 14px;
   font-size: 12px;
-  border: 1px solid var(--border-color, #e5e5e5);
+  font-family: inherit;
+  border: 0.5px solid var(--nm-border);
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
-  color: var(--text-primary, #111);
+  color: var(--nm-error);
+  transition: background 0.15s;
 }
 
-.nm-spin {
-  animation: nmSpin 0.9s linear infinite;
-}
+.nm-retry:hover { background: var(--nm-error-bg); }
 
-@keyframes nmSpin {
-  to { transform: rotate(360deg); }
-}
+@keyframes nmSpin { to { transform: rotate(360deg); } }
+.nm-spin { animation: nmSpin 0.9s linear infinite; }
 
-/* ── Thumbnail ───────────────────────────────────────────────────────────── */
-
+/* ── Thumbnail ───────────────────────────────────────────── */
 .nm-thumb {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -140,24 +181,19 @@
   display: block;
 }
 
-/* ── Content ─────────────────────────────────────────────────────────────── */
-
-.nm-content {
-  padding: 1.1rem 1.1rem 1.75rem;
-}
+/* ── Content ─────────────────────────────────────────────── */
+.nm-content { padding: 1.1rem 1.1rem 1.75rem; }
 
 .nm-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary, #111);
+  color: var(--nm-text);
   line-height: 1.35;
   margin: 0 0 10px;
   letter-spacing: -0.2px;
 }
 
-@media (max-width: 480px) {
-  .nm-title { font-size: 16px; }
-}
+@media (max-width: 480px) { .nm-title { font-size: 16px; } }
 
 .nm-meta {
   display: flex;
@@ -165,7 +201,7 @@
   gap: 8px;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color, #f0f0f0);
+  border-bottom: 0.5px solid var(--nm-border);
   flex-wrap: wrap;
 }
 
@@ -174,9 +210,10 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: var(--text-muted, #aaa);
+  color: var(--nm-muted);
 }
 
+/* ── Status badge ────────────────────────────────────────── */
 .nm-status {
   font-size: 11px;
   font-weight: 500;
@@ -189,15 +226,29 @@
   color: #1a7a4a;
 }
 
+.dark .nm-status.published {
+  background: rgba(26, 122, 74, 0.15);
+  color: #6ee7b7;
+  border: 0.5px solid rgba(26, 122, 74, 0.25);
+}
+
 .nm-status.draft {
   background: #fff8e6;
   color: #a06800;
 }
 
+.dark .nm-status.draft {
+  background: rgba(160, 104, 0, 0.15);
+  color: #fbbf24;
+  border: 0.5px solid rgba(160, 104, 0, 0.25);
+}
+
+/* ── Body text ───────────────────────────────────────────── */
 .nm-text {
   font-size: 14px;
-  color: var(--text-secondary, #444);
+  color: var(--nm-text);
   line-height: 1.75;
   margin: 0;
   white-space: pre-line;
+  opacity: 0.85;
 }

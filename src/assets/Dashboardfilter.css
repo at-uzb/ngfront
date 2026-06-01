@@ -1,17 +1,42 @@
-/* ── DashboardFilter ─────────────────────────────────────────────────────── */
+/* ── DashboardFilter ─────────────────────────────────── */
+
+/* Light tokens */
+.light .df-wrap {
+  --df-bg:       #ffffff;
+  --df-border:   rgba(0, 0, 0, 0.07);
+  --df-divider:  rgba(0, 0, 0, 0.06);
+  --df-tabs-bg:  #f0f0f0;
+  --df-text:     #111111;
+  --df-muted:    #999999;
+  --df-shadow:   0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --df-tab-active-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+
+/* Dark tokens */
+.dark .df-wrap {
+  --df-bg:       #252a3d;
+  --df-border:   rgba(120, 130, 255, 0.18);
+  --df-divider:  rgba(120, 130, 255, 0.1);
+  --df-tabs-bg:  #1e2235;
+  --df-text:     #e8eaf6;
+  --df-muted:    #5a6890;
+  --df-shadow:   0 0 0 1px rgba(120,130,255,0.08);
+  --df-tab-active-shadow: none;
+}
 
 .df-wrap {
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  border: 1px solid #e8e6e1;
+  background: var(--df-bg);
+  border: 1px solid var(--df-border);
   border-radius: 14px;
-  /* NO overflow:hidden — would clip the GroupSelector dropdown */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: var(--df-shadow);
   font-family: 'DM Sans', sans-serif;
+  transition: background 0.3s, border-color 0.3s;
+  /* no overflow:hidden — keeps GroupSelector dropdown visible */
 }
 
-/* ── Row: label + control side by side ── */
+/* ── Rows ────────────────────────────────────────────── */
 .df-row {
   display: flex;
   align-items: center;
@@ -24,13 +49,12 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #78716c;
+  color: var(--df-muted);
   white-space: nowrap;
   width: 44px;
   flex-shrink: 0;
 }
 
-/* GroupSelector sits directly in df-row — same pattern as Tasks.jsx */
 .df-row .group-selector {
   flex: 1;
   min-width: 0;
@@ -40,65 +64,119 @@
   width: 100%;
 }
 
-/* Divider between rows */
+/* ── Divider ─────────────────────────────────────────── */
 .df-divider {
   height: 1px;
-  background: #e8e6e1;
+  background: var(--df-divider);
   margin: 0 16px;
+  flex-shrink: 0;
 }
 
-/* ── Period tabs ── */
+/* ── Period tabs ─────────────────────────────────────── */
 .df-period-tabs {
   display: flex;
   flex: 1;
-  background: #f4f3f0;
-  border: 1px solid #e8e6e1;
+  min-width: 0;
+  background: var(--df-tabs-bg);
+  border: 1px solid var(--df-border);
   border-radius: 10px;
   padding: 3px;
   gap: 2px;
 }
 
 .df-tab {
-  flex: 1;
+  flex: 1 1 0;          /* equal width: grow AND shrink from 0 basis */
+  min-width: 0;
   border: none;
   background: transparent;
-  padding: 6px 8px;
+  padding: 6px 4px;
   border-radius: 7px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  color: #78716c;
+  color: var(--df-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   font-family: 'DM Sans', sans-serif;
   white-space: nowrap;
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .df-tab:hover {
-  color: #1a1917;
-  background: #ffffff;
+  color: var(--df-text);
+  background: var(--df-bg);
 }
 
 .df-tab.active {
-  background: #ffffff;
-  color: #1a1917;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--df-bg);
+  color: var(--df-text);
+  box-shadow: var(--df-tab-active-shadow);
 }
 
-/* ── Mobile ── */
-@media (max-width: 640px) {
-  .df-row { flex-wrap: wrap; gap: 8px; }
-  .df-label { width: auto; }
-  .df-row .group-selector { width: 100%; }
-  .df-period-tabs { flex-wrap: wrap; width: 100%; }
-  .df-tab { flex: unset; }
+.dark .df-tab.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7c9ff;
+  border: 0.5px solid rgba(120, 130, 255, 0.22);
 }
 
-/* ── Tasks: action buttons inside df-row ── */
+/* ── Tasks: action buttons ───────────────────────────── */
 .t-filter-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* ── Mobile ──────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .df-row {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  /* GroupSelector takes full width on its own row */
+  .df-row .group-selector {
+    width: 100%;
+  }
+
+  /* Tab row: let tabs wrap into a 2-column grid */
+  .df-row:has(.df-period-tabs) {
+    padding: 10px 12px;
+  }
+
+  .df-period-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 + 2 layout */
+    gap: 3px;
+    padding: 3px;
+  }
+
+  /* Last two tabs each take half the row */
+  .df-tab:nth-child(4),
+  .df-tab:nth-child(5) {
+    grid-column: span 1;
+  }
+
+  /* Make last row of 2 tabs centered and equal */
+  .df-period-tabs:has(.df-tab:nth-child(5):last-child) {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .df-period-tabs:has(.df-tab:nth-child(5):last-child) .df-tab:nth-child(1),
+  .df-period-tabs:has(.df-tab:nth-child(5):last-child) .df-tab:nth-child(2),
+  .df-period-tabs:has(.df-tab:nth-child(5):last-child) .df-tab:nth-child(3) {
+    grid-column: span 2;
+  }
+
+  .df-period-tabs:has(.df-tab:nth-child(5):last-child) .df-tab:nth-child(4),
+  .df-period-tabs:has(.df-tab:nth-child(5):last-child) .df-tab:nth-child(5) {
+    grid-column: span 3;
+  }
+
+  .df-tab {
+    font-size: 0.72rem;
+    padding: 7px 4px;
+  }
 }

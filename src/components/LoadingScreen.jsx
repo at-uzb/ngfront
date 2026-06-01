@@ -1,17 +1,17 @@
 import '../assets/LoadingScreen.css'
+import logo from "../assets/mlogo.png"
 
 function LoadingScreen() {
   return (
     <div className="loading-screen">
       <div className="loading-content">
-        <div className="loading-bars">
-          <div className="bar bar-1"></div>
-          <div className="bar bar-2"></div>
-          <div className="bar bar-3"></div>
-          <div className="bar bar-4"></div>
-        </div>
-        <span className="loading-wordmark">MetroTask</span>
-        <span className="loading-text">Loading your workspace…</span>
+        <img 
+          alt='Site logo' 
+          src={logo} 
+          style={{ width: '65px', height: '65px', objectFit: 'contain' }}
+          />
+        <span className="loading-wordmark">MTopshiriq</span>
+        <span className="loading-text">Ma'lumotlar yuklanmoqda…</span>
       </div>
     </div>
   )
