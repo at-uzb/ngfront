@@ -3,7 +3,6 @@ import { X, Bell, CheckCheck, Info, AlertTriangle, AlertCircle, CheckCircle } fr
 import '../assets/NotificationDrawer.css'
 import { useNavigate } from 'react-router-dom'
 
-// ── Icon per notification type ─────────────────────────────────────────────
 const TYPE_ICON = {
   info:    <Info size={14} strokeWidth={1.8} />,
   warning: <AlertTriangle size={14} strokeWidth={1.8} />,
@@ -13,20 +12,18 @@ const TYPE_ICON = {
 
 const typeIcon = (type) => TYPE_ICON[type] ?? TYPE_ICON.info
 
-// ── Relative time helper ───────────────────────────────────────────────────
 const relativeTime = (isoString) => {
   const diff  = Date.now() - new Date(isoString).getTime()
   const mins  = Math.floor(diff / 60_000)
   const hours = Math.floor(diff / 3_600_000)
   const days  = Math.floor(diff / 86_400_000)
-  if (mins  <  1) return 'just now'
-  if (mins  < 60) return `${mins}m ago`
-  if (hours < 24) return `${hours}h ago`
-  if (days  <  7) return `${days}d ago`
+  if (mins  <  1) return 'Hozirgina'
+  if (mins  < 60) return `${mins} daqiqa oldin`
+  if (hours < 24) return `${hours} soat oldin`
+  if (days  <  7) return `${days} kun oldin`
   return new Date(isoString).toLocaleDateString()
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
 const NotificationDrawer = ({
   open,
   onClose,
@@ -40,12 +37,9 @@ const NotificationDrawer = ({
   const touchStart = useRef(null)
   const navigate   = useNavigate()
 
-  // Read the current theme from .app so tokens resolve correctly
-  // since the drawer renders outside the .app div tree (fixed positioning)
   const isDark = document.querySelector('.app')?.classList.contains('dark')
   const themeClass = isDark ? 'dark' : 'light'
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return
     const handler = (e) => { if (e.key === 'Escape') onClose() }
@@ -53,13 +47,11 @@ const NotificationDrawer = ({
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
 
-  // Prevent body scroll while open
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  // ── Touch swipe-right to close ────────────────────────────────────────────
   const handleTouchStart = useCallback((e) => {
     touchStart.current = e.touches[0].clientX
   }, [])
@@ -75,18 +67,16 @@ const NotificationDrawer = ({
 
   return (
     <>
-      {/* ── Backdrop ── */}
       <div
         className={`nd-backdrop ${themeClass} ${open ? 'nd-backdrop--visible' : ''}`}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* ── Drawer ── */}
       <aside
         ref={drawerRef}
         className={`nd-drawer ${themeClass} ${open ? 'nd-drawer--open' : ''}`}
-        aria-label="Notifications"
+        aria-label="Bildirishnomalar"
         aria-hidden={!open}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -96,7 +86,7 @@ const NotificationDrawer = ({
         <div className="nd-header">
           <div className="nd-header-left">
             <Bell size={15} strokeWidth={1.8} className="nd-header-icon" />
-            <span className="nd-title">Notifications</span>
+            <span className="nd-title">Bildirishnomalar</span>
             {unread > 0 && (
               <span className="nd-badge">{unread > 99 ? '99+' : unread}</span>
             )}
@@ -106,16 +96,16 @@ const NotificationDrawer = ({
               <button
                 className="nd-mark-all"
                 onClick={onMarkAllRead}
-                title="Mark all as read"
+                title="Barchasini o'qilgan deb belgilash"
               >
                 <CheckCheck size={14} strokeWidth={1.8} />
-                <span>Mark all read</span>
+                <span>Barchasini o'qildi</span>
               </button>
             )}
             <button
               className="nd-close"
               onClick={onClose}
-              aria-label="Close notifications"
+              aria-label="Bildirishnomalarni yopish"
             >
               <X size={16} strokeWidth={1.8} />
             </button>
@@ -128,7 +118,7 @@ const NotificationDrawer = ({
           {loading && (
             <div className="nd-state">
               <div className="nd-spinner" />
-              <span>Loading…</span>
+              <span>Yuklanmoqda…</span>
             </div>
           )}
 
@@ -142,8 +132,8 @@ const NotificationDrawer = ({
           {!loading && !error && notifications.length === 0 && (
             <div className="nd-state nd-state--empty">
               <Bell size={28} strokeWidth={1.2} className="nd-empty-icon" />
-              <span className="nd-empty-title">All caught up</span>
-              <span className="nd-empty-sub">No notifications yet</span>
+              <span className="nd-empty-title">Hammasi o'qildi</span>
+              <span className="nd-empty-sub">Hozircha bildirishnomalar yo'q</span>
             </div>
           )}
 
@@ -154,7 +144,7 @@ const NotificationDrawer = ({
                   key={n.id}
                   className={[
                     'nd-item',
-                    !n.is_read          ? 'nd-item--unread'       : '',
+                    !n.is_read ? 'nd-item--unread' : '',
                     `nd-item--${n.type ?? 'info'}`,
                   ].filter(Boolean).join(' ')}
                   onClick={() => {
@@ -182,7 +172,7 @@ const NotificationDrawer = ({
                     <span className="nd-item-msg">{n.message}</span>
                     <span className="nd-item-time">{relativeTime(n.created_at)}</span>
                   </div>
-                  {!n.is_read && <span className="nd-unread-dot" aria-label="Unread" />}
+                  {!n.is_read && <span className="nd-unread-dot" aria-label="O'qilmagan" />}
                   {(n.type === 'info' || n.type === 'success') && n.data?.task_id && (
                     <span className="nd-item-chevron">›</span>
                   )}
