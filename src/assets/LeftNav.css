@@ -210,13 +210,19 @@
 .nav-support:hover .nav-support-icon { color: var(--nav-text); }
 
 /* ── Mobile Bottom Bar ──────────────────────────── */
+/* ── Mobile Bottom Bar ──────────────────────────── */
 .mobile-bottom-nav {
   display: none;
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
   padding: 0 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px;
-  background: var(--nav-bg);
-  border-top: 0.5px solid var(--nav-border);
+  background: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
+  border-top: none;
   font-family: var(--nav-font);
+}
+
+/* Dark mode — slightly deeper so it doesn't wash out on dark screens */
+.dark .mobile-bottom-nav {
+  background: linear-gradient(135deg, #6366f1 0%, #3730a3 100%);
 }
 
 .bottom-nav-menu {
@@ -228,14 +234,20 @@
 
 .bottom-nav-link {
   display: flex; flex-direction: column; align-items: center;
-  gap: 4px; padding: 10px 4px 8px;
-  text-decoration: none; color: var(--nav-subtle);
+  gap: 4px; padding: 12px 4px 10px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.5);
   transition: color 0.15s; position: relative;
 }
 
-.bottom-nav-link.active { color: var(--nav-active-text); }
+.bottom-nav-link.active { color: #ffffff; }
+
 .bottom-nav-link svg { transition: transform 0.2s; }
-.bottom-nav-link.active svg { transform: translateY(-1px); }
+
+.bottom-nav-link.active svg {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.35));
+}
 
 .bottom-nav-label {
   font-size: 10px; font-weight: 400;
@@ -244,16 +256,36 @@
 
 .bottom-nav-link.active .bottom-nav-label { font-weight: 500; }
 
+/* frosted pill behind active icon */
+.bottom-nav-link::before {
+  content: '';
+  position: absolute; top: 6px; left: 50%;
+  transform: translateX(-50%);
+  width: 36px; height: 36px;
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.bottom-nav-link.active::before { opacity: 1; }
+
+/* line indicator at bottom */
 .bottom-nav-line {
   position: absolute; bottom: 0; left: 50%;
   transform: translateX(-50%);
-  width: 20px; height: 2px;
-  background: var(--nav-active-bar);
+  width: 20px; height: 2.5px;
+  background: rgba(255, 255, 255, 0.9);
   border-radius: 2px 2px 0 0;
   opacity: 0; transition: opacity 0.2s, width 0.2s;
 }
 
 .bottom-nav-link.active .bottom-nav-line { opacity: 1; }
+
+@media (max-width: 768px) {
+  .desktop-nav { display: none; }
+  .mobile-bottom-nav { display: block; }
+}
 
 /* ── Responsive ─────────────────────────────────── */
 @media (max-width: 1024px) and (min-width: 769px) {

@@ -30,6 +30,7 @@ const SECTION_MAP = {
   '/tasks':       'Topshiriqlar',
   '/profile':     'Profile',
   '/news':        'Yangiliklar',
+  '/chat':        'AI bilan suhbat',
   '/task/create': "Topshiriq qo'shish",
   '/news/create': "Yangilik qo'shish",
 }
@@ -63,16 +64,12 @@ function AppShell() {
     document.body.classList.toggle('dark-mode', darkMode)
   }, [darkMode])
 
-  // Once auth is confirmed, refresh to get latest user data (photo etc.)
   useEffect(() => {
     if (isReady) refreshUser()
   }, [isReady])
 
   const toggleDarkMode = useCallback(() => setDarkMode((d) => !d), [])
 
-  // Block ALL children from mounting until /users/me/ resolves.
-  // This prevents GroupSelector, TopNav, and all page components
-  // from firing API calls before the session cookie is confirmed.
   if (!isReady) return (
     <div className={`app ${darkMode ? 'dark' : 'light'}`}>
       <div style={{
@@ -80,18 +77,28 @@ function AppShell() {
         alignItems:     'center',
         justifyContent: 'center',
         minHeight:      '100vh',
-        background:      darkMode ? '#1e2235' : '#f5f7fa',
+        background:     darkMode ? '#0d0f1a' : '#f4f6fb',
       }}>
-        <div style={{
-          width:       28,
-          height:      28,
-          border:      '2.5px solid',
-          borderColor:    darkMode ? 'rgba(120,130,255,0.2)' : 'rgba(0,0,0,0.1)',
-          borderTopColor: darkMode ? '#818cf8'               : '#6366f1',
-          borderRadius: '50%',
-          animation:    'spin 0.7s linear infinite',
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        {/* Double-ring spinner matching Dashboard brand */}
+        <div style={{ position: 'relative', width: 36, height: 36 }}>
+          <div style={{
+            position:        'absolute',
+            inset:           0,
+            borderRadius:    '50%',
+            border:          '2.5px solid transparent',
+            borderTopColor:  darkMode ? '#8384f3' : '#6768EE',
+            animation:       'app-spin 0.9s linear infinite',
+          }} />
+          <div style={{
+            position:        'absolute',
+            inset:           8,
+            borderRadius:    '50%',
+            border:          '2px solid transparent',
+            borderTopColor:  darkMode ? 'rgba(131,132,243,0.35)' : 'rgba(103,104,238,0.30)',
+            animation:       'app-spin 0.6s linear infinite reverse',
+          }} />
+        </div>
+        <style>{`@keyframes app-spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     </div>
   )
@@ -132,6 +139,7 @@ function App() {
               <Route path="tasks/:id"   element={<TaskDetail />} />
               <Route path="profile"     element={<Profile />} />
               <Route path="news"        element={<News />} />
+              <Route path="chat"        element={<Chat/>} />
               <Route path="task/create" element={<TaskCreate />} />
               <Route path="news/create" element={<NewsCreate />} />
               <Route path="news/:slug"  element={<NewsDetail />} />

@@ -1,5 +1,3 @@
-/* ── App.css ─────────────────────────────────────────────── */
-
 /* ── Reset ───────────────────────────────────────────────── */
 *, *::before, *::after {
   margin: 0;
@@ -16,133 +14,145 @@ body {
 
 /* ── Theme tokens — scoped to .app ──────────────────────── */
 .app.light {
-  --bg-app:       #f5f7fa;
+  --bg-app:       #f4f6fb;
   --bg-surface:   #ffffff;
   --bg-card:      #ffffff;
-  --text-primary: #111111;
-  --text-muted:   #888888;
-  --text-subtle:  #bbbbbb;
-  --border:       rgba(0, 0, 0, 0.07);
+  --text-primary: #0f1117;
+  --text-muted:   #7b8296;
+  --text-subtle:  #b0b8cc;
+  --border:       rgba(103, 104, 238, 0.12);
+  --border-h:     rgba(103, 104, 238, 0.28);
   --border-glow:  none;
-  --accent:       #6366f1;
-  --accent-muted: rgba(99, 102, 241, 0.12);
+  --accent:       #6768EE;
+  --accent-rgb:   103, 104, 238;
+  --accent-muted: rgba(103, 104, 238, 0.10);
+  --accent-light: #eff0fe;
+  --shadow-sm:    0 1px 2px rgba(103,104,238,0.06), 0 0 0 1px rgba(103,104,238,0.07);
+  --shadow-md:    0 4px 16px rgba(103,104,238,0.10), 0 0 0 1px rgba(103,104,238,0.10);
 
-  /* forward --t-* so Tasks.css vars resolve correctly */
-  --t-bg:        #ffffff;
-  --t-surface:   #f5f5f5;
-  --t-border:    rgba(0, 0, 0, 0.07);
-  --t-border-md: rgba(0, 0, 0, 0.14);
-  --t-text:      #111111;
-  --t-muted:     #888888;
-  --t-subtle:    #bbbbbb;
-  --t-hover:     #f0f0f0;
+  /* ── Tasks tokens ── */
+  --t-bg:          #ffffff;
+  --t-surface:     #f4f5fe;
+  --t-border:      rgba(103, 104, 238, 0.12);
+  --t-border-md:   rgba(103, 104, 238, 0.25);
+  --t-text:        #0f1117;
+  --t-muted:       #7b8296;
+  --t-subtle:      #b0b8cc;
+  --t-hover:       #eff0fe;
 
-  --t-urgent-bg:   #fcebeb;
-  --t-urgent-text: #a32d2d;
-  --t-blue-bg:     #e6f1fb;
-  --t-blue-text:   #185fa5;
-  --t-gold-bg:     #faeeda;
-  --t-gold-text:   #854f0b;
-  --t-green-bg:    #eaf3de;
-  --t-green-text:  #3b6d11;
+  --t-urgent-bg:   #fff1f2;
+  --t-urgent-text: #dc2626;
+  --t-blue-bg:     #eff0fe;
+  --t-blue-text:   #4f46e5;
+  --t-gold-bg:     #fffbeb;
+  --t-gold-text:   #b45309;
+  --t-green-bg:    #f0fdf4;
+  --t-green-text:  #15803d;
 
-  /* forward --nav-* */
-  --nav-bg:              #fafafa;
-  --nav-border:          rgba(0, 0, 0, 0.07);
-  --nav-text:            #111111;
-  --nav-muted:           #999999;
-  --nav-subtle:          #cccccc;
-  --nav-hover-bg:        #f0f0f0;
-  --nav-active-bg:       #f0f0f0;
-  --nav-active-bar:      #6366f1;
-  --nav-active-text:     #111111;
-  --nav-divider:         rgba(0, 0, 0, 0.06);
-  --nav-badge-bg:        #ebebeb;
-  --nav-badge-text:      #999999;
-  --nav-badge-active-bg: #6366f1;
+  /* ── Nav tokens ── */
+  --nav-bg:                #ffffff;
+  --nav-border:            rgba(103, 104, 238, 0.12);
+  --nav-text:              #0f1117;
+  --nav-muted:             #7b8296;
+  --nav-subtle:            #b0b8cc;
+  --nav-hover-bg:          #eff0fe;
+  --nav-active-bg:         #eff0fe;
+  --nav-active-bar:        #6768EE;
+  --nav-active-text:       #4f46e5;
+  --nav-divider:           rgba(103, 104, 238, 0.08);
+  --nav-badge-bg:          #eff0fe;
+  --nav-badge-text:        #6768EE;
+  --nav-badge-active-bg:   #6768EE;
   --nav-badge-active-text: #ffffff;
 
-  /* forward --topnav-* */
+  /* ── TopNav tokens ── */
   --topnav-bg:            #ffffff;
-  --topnav-border:        rgba(0, 0, 0, 0.07);
-  --topnav-text:          #111111;
-  --topnav-muted:         #aaaaaa;
-  --topnav-hover-bg:      #f5f5f5;
-  --topnav-hover-border:  rgba(0, 0, 0, 0.07);
-  --topnav-divider:       rgba(0, 0, 0, 0.07);
-  --topnav-avatar-bg:     #f0f0f0;
-  --topnav-avatar-border: rgba(0, 0, 0, 0.07);
-  --topnav-avatar-text:   #888888;
-  --topnav-dot:           #e24b4a;
+  --topnav-border:        rgba(103, 104, 238, 0.12);
+  --topnav-text:          #0f1117;
+  --topnav-muted:         #7b8296;
+  --topnav-hover-bg:      #eff0fe;
+  --topnav-hover-border:  rgba(103, 104, 238, 0.20);
+  --topnav-divider:       rgba(103, 104, 238, 0.08);
+  --topnav-avatar-bg:     #eff0fe;
+  --topnav-avatar-border: rgba(103, 104, 238, 0.20);
+  --topnav-avatar-text:   #6768EE;
+  --topnav-dot:           #ef4444;
   --topnav-dot-border:    #ffffff;
 
   background-color: var(--bg-app);
   color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
 }
 
 .app.dark {
-  --bg-app:       #1e2235;
-  --bg-surface:   #252a3d;
-  --bg-card:      #252a3d;
-  --text-primary: #e8eaf6;
-  --text-muted:   #5a6890;
-  --text-subtle:  #3a4060;
-  --border:       rgba(120, 130, 255, 0.18);
-  --border-glow:  0 0 0 1px rgba(120,130,255,0.12), 0 0 14px rgba(99,102,241,0.10);
-  --accent:       #818cf8;
-  --accent-muted: rgba(99, 102, 241, 0.12);
+  --bg-app:       #0d0f1a;
+  --bg-surface:   #13162a;
+  --bg-card:      #13162a;
+  --text-primary: #e4e7f5;
+  --text-muted:   #4e5575;
+  --text-subtle:  #2d3354;
+  --border:       rgba(131, 132, 243, 0.14);
+  --border-h:     rgba(131, 132, 243, 0.30);
+  --border-glow:  0 0 0 1px rgba(131,132,243,0.12), 0 8px 24px rgba(103,104,238,0.08);
+  --accent:       #8384f3;
+  --accent-rgb:   131, 132, 243;
+  --accent-muted: rgba(103, 104, 238, 0.12);
+  --accent-light: rgba(103, 104, 238, 0.15);
+  --shadow-sm:    0 0 0 1px rgba(131,132,243,0.10);
+  --shadow-md:    0 0 0 1px rgba(131,132,243,0.16), 0 8px 24px rgba(103,104,238,0.08);
 
-  /* forward --t-* */
-  --t-bg:        #252a3d;
-  --t-surface:   #1e2235;
-  --t-border:    rgba(120, 130, 255, 0.15);
-  --t-border-md: rgba(120, 130, 255, 0.28);
-  --t-text:      #e8eaf6;
-  --t-muted:     #5a6890;
-  --t-subtle:    #3a4060;
-  --t-hover:     rgba(99, 102, 241, 0.08);
+  /* ── Tasks tokens ── */
+  --t-bg:          #13162a;
+  --t-surface:     #0f1122;
+  --t-border:      rgba(131, 132, 243, 0.14);
+  --t-border-md:   rgba(131, 132, 243, 0.28);
+  --t-text:        #e4e7f5;
+  --t-muted:       #4e5575;
+  --t-subtle:      #2d3354;
+  --t-hover:       rgba(103, 104, 238, 0.10);
 
-  --t-urgent-bg:   rgba(163, 45, 45, 0.15);
-  --t-urgent-text: #f87171;
-  --t-blue-bg:     rgba(24, 95, 165, 0.15);
-  --t-blue-text:   #93c5fd;
-  --t-gold-bg:     rgba(133, 79, 11, 0.15);
+  --t-urgent-bg:   rgba(220, 38, 38, 0.10);
+  --t-urgent-text: #fca5a5;
+  --t-blue-bg:     rgba(103, 104, 238, 0.15);
+  --t-blue-text:   #a5b4fc;
+  --t-gold-bg:     rgba(245, 158, 11, 0.12);
   --t-gold-text:   #fbbf24;
-  --t-green-bg:    rgba(59, 109, 17, 0.15);
+  --t-green-bg:    rgba(34, 197, 94, 0.12);
   --t-green-text:  #86efac;
 
-  /* forward --nav-* */
-  --nav-bg:              #1e2235;
-  --nav-border:          rgba(120, 130, 255, 0.18);
-  --nav-text:            #e8eaf6;
-  --nav-muted:           #5a6890;
-  --nav-subtle:          #3a4060;
-  --nav-hover-bg:        rgba(99, 102, 241, 0.07);
-  --nav-active-bg:       rgba(99, 102, 241, 0.12);
-  --nav-active-bar:      #818cf8;
-  --nav-active-text:     #c7c9ff;
-  --nav-divider:         rgba(120, 130, 255, 0.10);
-  --nav-badge-bg:        rgba(99, 102, 241, 0.15);
-  --nav-badge-text:      #818cf8;
-  --nav-badge-active-bg: rgba(99, 102, 241, 0.25);
+  /* ── Nav tokens ── */
+  --nav-bg:                #13162a;
+  --nav-border:            rgba(131, 132, 243, 0.14);
+  --nav-text:              #e4e7f5;
+  --nav-muted:             #4e5575;
+  --nav-subtle:            #2d3354;
+  --nav-hover-bg:          rgba(103, 104, 238, 0.10);
+  --nav-active-bg:         rgba(103, 104, 238, 0.15);
+  --nav-active-bar:        #8384f3;
+  --nav-active-text:       #a5b4fc;
+  --nav-divider:           rgba(131, 132, 243, 0.08);
+  --nav-badge-bg:          rgba(103, 104, 238, 0.18);
+  --nav-badge-text:        #a5b4fc;
+  --nav-badge-active-bg:   rgba(103, 104, 238, 0.28);
   --nav-badge-active-text: #c7c9ff;
 
-  /* forward --topnav-* */
-  --topnav-bg:            #252a3d;
-  --topnav-border:        rgba(120, 130, 255, 0.18);
-  --topnav-text:          #e8eaf6;
-  --topnav-muted:         #4a5080;
-  --topnav-hover-bg:      rgba(99, 102, 241, 0.08);
-  --topnav-hover-border:  rgba(120, 130, 255, 0.20);
-  --topnav-divider:       rgba(120, 130, 255, 0.12);
-  --topnav-avatar-bg:     rgba(99, 102, 241, 0.15);
-  --topnav-avatar-border: rgba(120, 130, 255, 0.30);
-  --topnav-avatar-text:   #818cf8;
+  /* ── TopNav tokens ── */
+  --topnav-bg:            #13162a;
+  --topnav-border:        rgba(131, 132, 243, 0.14);
+  --topnav-text:          #e4e7f5;
+  --topnav-muted:         #4e5575;
+  --topnav-hover-bg:      rgba(103, 104, 238, 0.10);
+  --topnav-hover-border:  rgba(131, 132, 243, 0.25);
+  --topnav-divider:       rgba(131, 132, 243, 0.08);
+  --topnav-avatar-bg:     rgba(103, 104, 238, 0.15);
+  --topnav-avatar-border: rgba(131, 132, 243, 0.30);
+  --topnav-avatar-text:   #a5b4fc;
   --topnav-dot:           #f87171;
-  --topnav-dot-border:    #252a3d;
+  --topnav-dot-border:    #13162a;
 
   background-color: var(--bg-app);
   color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
 }
 
 /* ── App shell ───────────────────────────────────────────── */
@@ -182,16 +192,17 @@ body {
 }
 
 .content-area:has(> .dash) {
-  padding: 60px 0 0 0;
+  padding: 60px 0 10px 0;
   overflow: hidden;
 }
 
 /* ── Page container ──────────────────────────────────────── */
 .page-container {
   background: var(--bg-card);
-  border: 0.5px solid var(--border);
-  box-shadow: var(--border-glow);
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+  border-radius: 14px;
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
@@ -201,6 +212,12 @@ body {
 
 .page-container h2 { margin-bottom: 15px; color: var(--text-primary); }
 .page-container p  { line-height: 1.6;    color: var(--text-primary); }
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar              { width: 5px; height: 5px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: rgba(103,104,238,0.20); border-radius: 99px; }
+.dark ::-webkit-scrollbar-thumb  { background: rgba(131,132,243,0.18); }
 
 /* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 768px) {

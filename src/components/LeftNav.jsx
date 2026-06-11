@@ -1,31 +1,28 @@
 import { NavLink } from 'react-router-dom'
-import {
-  LayoutGrid,
-  CheckSquare,
-  MessageSquare,
-  User,
-  MoreHorizontal,
-  Newspaper
-} from 'lucide-react'
-import { useRole } from '../hooks/useRole'
+import { LayoutGrid, CheckSquare, MessageSquare, User, Newspaper, Bot } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 import '../assets/LeftNav.css'
 import logo from '../assets/mlogo.png'
 
 const MAIN_ITEMS = [
-  { path: '/dashboard', name: 'Dashboard',    icon: LayoutGrid,    permission: 'viewTasks', badge: null },
-  { path: '/tasks',     name: 'Topshiriqlar', icon: CheckSquare,   permission: 'viewTasks',      badge: null   },
-  { path: '/news',      name: 'Yangiliklar',  icon: Newspaper, permission: 'viewAnalytics',  badge: null    },
+  { path: '/dashboard', name: 'Dashboard',    icon: LayoutGrid,   adminOnly: false, badge: null },
+  { path: '/tasks',     name: 'Topshiriqlar', icon: CheckSquare,  adminOnly: false, badge: null },
+  { path: '/chat',      name: "Sun'iy Ong",   icon: Bot, adminOnly: true,  badge: null },
+  { path: '/news',      name: 'Yangiliklar',  icon: Newspaper,    adminOnly: false, badge: null },
 ]
 
 const ACCOUNT_ITEMS = [
-  { path: '/profile', name: 'Profil', icon: User, permission: 'viewProfile' },
+  { path: '/profile', name: 'Profil', icon: User, adminOnly: false },
 ]
 
 export default function LeftNav({ user }) {
-  const { can } = useRole()
+  const { isAdmin } = useAuth()
 
-  const visibleMain    = MAIN_ITEMS.filter((item) => can(item.permission))
-  const visibleAccount = ACCOUNT_ITEMS.filter((item) => can(item.permission))
+  const filterItems = (items) =>
+    items.filter((item) => !item.adminOnly || isAdmin)
+
+  const visibleMain    = filterItems(MAIN_ITEMS)
+  const visibleAccount = filterItems(ACCOUNT_ITEMS)
   const allVisible     = [...visibleMain, ...visibleAccount]
 
   return (
@@ -34,17 +31,11 @@ export default function LeftNav({ user }) {
 
         <div className="nav-logo">
           <div className="nav-logo-mark">
-            {/* <svg width="15" height="15" fill="none" stroke="#fff" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <rect x="3" y="3" width="18" height="18" rx="4"/>
-              <path d="M3 9h18M9 21V9"/>
-            </svg> */}
-            <img 
-              alt='Site logo' 
-              src={logo} 
+            <img
+              alt='Site logo'
+              src={logo}
               style={{ width: '30px', height: '30px', objectFit: 'contain' }}
             />
-
           </div>
           <div>
             <div className="nav-logo-name">MTopshiriq</div>
@@ -96,19 +87,19 @@ export default function LeftNav({ user }) {
         <div className="nav-spacer" />
         <div className="nav-divider" />
 
-      <a href="https://t.me/fulminar"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="nav-support"
-      >
-        <div className="nav-support-icon">
-          <MessageSquare size={14} strokeWidth={1.8} />
-        </div>
-        <div className="nav-user-info">
-          <div className="nav-user-name">Yordam kerakmi?</div>
-          <div className="nav-user-role">Telegram orqali bog'laning</div>
-        </div>
-      </a>
+        <a href="https://t.me/fulminar"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nav-support"
+        >
+          <div className="nav-support-icon">
+            <MessageSquare size={14} strokeWidth={1.8} />
+          </div>
+          <div className="nav-user-info">
+            <div className="nav-user-name">Yordam kerakmi?</div>
+            <div className="nav-user-role">Telegram orqali bog'laning</div>
+          </div>
+        </a>
 
       </nav>
 
