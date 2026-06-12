@@ -79,12 +79,9 @@ export default function Profile() {
         updateUser({ ...user, ...(res.data.user ?? res.data) });
       } else {
         const res = await api.patch('/users/update/', {
-          name:       form.name,
-          surname:    form.surname,
-          birth_date: form.birth_date,
-          language:   form.language,
-          city:       form.city,
-          district:   form.district,
+          name: form.name, surname: form.surname,
+          birth_date: form.birth_date, language: form.language,
+          city: form.city, district: form.district,
         });
         updateUser({ ...user, ...(res.data.user ?? res.data) });
       }
@@ -92,10 +89,10 @@ export default function Profile() {
       flash('success', "O'zgarishlar muvaffaqiyatli saqlandi!");
     } catch (err) {
       if (err.response?.status === 401) {
-        flash('error', 'Sessiya tugadi, yo\'naltirilmoqda…');
+        flash('error', "Sessiya tugadi, yo'naltirilmoqda…");
         setTimeout(() => { logout(); navigate('/login'); }, 2000);
       } else {
-        flash('error', err.response?.data?.detail || err.response?.data?.message || 'O\'zgarishlarni saqlashda xatolik.');
+        flash('error', err.response?.data?.detail || err.response?.data?.message || "O'zgarishlarni saqlashda xatolik.");
       }
     } finally {
       setSaving(false);
@@ -114,16 +111,15 @@ export default function Profile() {
       <style>{CSS}</style>
       <div className="pp">
 
-        {/* ── Cover backdrop ── */}
         <div className="pp-cover">
-          <button className="pp-back" onClick={() => navigate(-1)} type="button" aria-label="Orqaga">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+          <button className="pp-icon-btn pp-back" onClick={() => navigate(-1)} type="button" aria-label="Orqaga">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
           </button>
 
-          <button className="pp-signout-top" onClick={handleLogout} type="button" aria-label="Chiqish">
+          <button className="pp-icon-btn pp-logout" onClick={handleLogout} type="button" aria-label="Chiqish">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -132,14 +128,13 @@ export default function Profile() {
             </svg>
           </button>
 
-          {/* Centered avatar */}
-          <div className="pp-cover-center">
+          <div className="pp-cover-body">
             <label className="pp-avatar-wrap">
               <input type="file" accept="image/*" onChange={onPhotoChange} hidden />
               <div className="pp-avatar">
                 {avatarSrc ? <img src={avatarSrc} alt="" /> : <span>{initStr}</span>}
-                <div className="pp-avatar-overlay">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                <div className="pp-avatar-cam">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                     <circle cx="12" cy="13" r="4"/>
@@ -147,8 +142,8 @@ export default function Profile() {
                 </div>
               </div>
             </label>
-            <h1 className="pp-cover-name">{user?.full_name || fmtPhone(user?.phone_number) || 'Foydalanuvchi'}</h1>
-            <p className="pp-cover-phone">{fmtPhone(user?.phone_number)}</p>
+            <h1 className="pp-name">{user?.full_name || fmtPhone(user?.phone_number) || 'Foydalanuvchi'}</h1>
+            <p className="pp-phone">{fmtPhone(user?.phone_number)}</p>
             <div className="pp-pills">
               {user?.is_admin    && <span className="pp-pill pill-admin">Admin</span>}
               {user?.is_verified
@@ -163,63 +158,54 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* ── Sheet ── */}
         <form className="pp-sheet" onSubmit={saveProfile}>
-
-          {/* drag handle */}
           <div className="pp-handle" />
 
-          {/* Flash */}
           {msg && (
             <div className={`pp-flash pp-flash--${msg.type}`} role="alert">
               {msg.type === 'success'
-                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               }
               {msg.text}
             </div>
           )}
 
-          {/* Rows */}
-          <div className="pp-rows">
+          <p className="pp-section-label">Shaxsiy ma'lumotlar</p>
 
-            <Row icon="👤" label="Ism">
+          <div className="pp-rows">
+            <Row icon="user" label="Ism">
               <input name="name" value={form.name} onChange={onField}
                 placeholder="Ismingizni kiriting" disabled={saving} />
             </Row>
-
-            <Row icon="👤" label="Familiya">
+            <Row icon="user" label="Familiya">
               <input name="surname" value={form.surname} onChange={onField}
                 placeholder="Familiyangizni kiriting" disabled={saving} />
             </Row>
-
-            <Row icon="🎂" label="Tug'ilgan sana">
+            <Row icon="cake" label="Tug'ilgan sana">
               <input type="date" name="birth_date" value={form.birth_date}
                 onChange={onField} disabled={saving} />
             </Row>
-
-            <Row icon="🌐" label="Til">
+            <Row icon="language" label="Til">
               <select name="language" value={form.language} onChange={onField} disabled={saving}>
                 {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </Row>
-
-            <Row icon="🏙️" label="Shahar">
+            <Row icon="building" label="Shahar">
               <input name="city" value={form.city} onChange={onField}
                 placeholder="Shahringiz" disabled={saving} />
             </Row>
-
-            <Row icon="📍" label="Tuman">
+            <Row icon="map-pin" label="Tuman">
               <input name="district" value={form.district} onChange={onField}
                 placeholder="Tumaningiz" disabled={saving} />
             </Row>
-
           </div>
 
           <button type="submit" className="pp-save" disabled={saving}>
-            {saving ? <><span className="pp-spinner" /> Saqlanmoqda…</> : "O'zgarishlarni saqlash"}
+            {saving
+              ? <><span className="pp-spinner" /> Saqlanmoqda…</>
+              : "O'zgarishlarni saqlash"}
           </button>
-
         </form>
       </div>
     </>
@@ -229,316 +215,243 @@ export default function Profile() {
 function Row({ icon, label, children }) {
   return (
     <div className="pp-row">
-      <div className="pp-row-left">
-        <span className="pp-row-icon">{icon}</span>
-        <span className="pp-row-label">{label}</span>
+      <div className="pp-row-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          {ICONS[icon]}
+        </svg>
       </div>
+      <span className="pp-row-label">{label}</span>
       <div className="pp-row-input">{children}</div>
     </div>
   );
 }
 
-/* ════════════════════════════════════════════════ */
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+const ICONS = {
+  user:     <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+  cake:     <><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4 12 2l5 2"/></>,
+  language: <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
+  building: <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></>,
+  'map-pin':<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
+};
 
+const CSS = `
 *, *::before, *::after { box-sizing: border-box; }
 
-/* ── Tokens ── */
 .pp {
-  --pp-accent:      #6366f1;
-  --pp-accent-dk:   #4338ca;
-  --pp-accent-lt:   #eef2ff;
-  --pp-cover-from:  #818cf8;
-  --pp-cover-to:    #4f46e5;
-  --pp-danger:      #f87171;
-  --pp-danger-lt:   rgba(248, 113, 113, 0.12);
+  --accent:      #4F6EF7;
+  --accent-dk:   #3a57d0;
+  --accent-lt:   rgba(79,110,247,0.10);
+  --danger:      #ef4444;
+  --danger-lt:   rgba(239,68,68,0.10);
+  --header-bg:   #4F6EF7;
 
   width: 100%;
   min-height: 100vh;
-  font-family: 'Nunito', sans-serif;
-  color: #1a1a1a;
-  background: linear-gradient(145deg, var(--pp-cover-from) 0%, var(--pp-cover-to) 100%);
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  background: #f4f6fb;
   display: flex;
   flex-direction: column;
-  position: relative;
 }
 
-/* Dark sheet + input overrides */
 .dark .pp {
-  --pp-cover-from:  #4c4faa;
-  --pp-cover-to:    #312e81;
-  --pp-accent-lt:   rgba(99, 102, 241, 0.15);
-  --pp-accent-dk:   #a5b4fc;
+  background: #131726;
+  --header-bg:  #1A1F35;
+  --accent-lt:  rgba(129,140,248,0.12);
+  --accent-dk:  #a5b4fc;
 }
 
 /* ── Cover ── */
 .pp-cover {
+  background: var(--header-bg);
+  padding: 18px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   position: relative;
-  padding: 3.5rem 1.5rem 7rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: linear-gradient(145deg, var(--pp-cover-from) 0%, var(--pp-cover-to) 100%);
 }
 
-.pp-back,
-.pp-signout-top {
+.pp-icon-btn {
   position: absolute;
-  top: 1.1rem;
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.18);
-  border: none;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s;
+  top: 16px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.13);
+  border: none; color: rgba(255,255,255,0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
 }
-.pp-back         { left: 1.1rem; }
-.pp-signout-top  { right: 1.1rem; }
-.pp-back:hover,
-.pp-signout-top:hover { background: rgba(255,255,255,0.3); }
+.pp-icon-btn:hover { background: rgba(255,255,255,0.24); }
+.dark .pp-icon-btn { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.50); }
 
-.pp-cover-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
+.pp-back   { left: 16px; }
+.pp-logout { right: 16px; }
+
+.pp-cover-body {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 5px;
+  margin-top: 6px;
 }
 
-/* Avatar */
 .pp-avatar-wrap { cursor: pointer; }
 
 .pp-avatar {
   position: relative;
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  border: 3.5px solid rgba(255,255,255,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 800;
-  color: #fff;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-  transition: border-color 0.15s;
+  width: 80px; height: 80px; border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: 2.5px solid rgba(255,255,255,0.45);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem; font-weight: 700; color: #fff;
+  overflow: hidden; margin-bottom: 4px;
 }
+.dark .pp-avatar { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.16); }
 .pp-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.pp-avatar-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.38);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.18s;
-}
-.pp-avatar:hover .pp-avatar-overlay,
-.pp-avatar-wrap:focus-within .pp-avatar-overlay { opacity: 1; }
 
-.pp-cover-name {
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: #fff;
-  margin: 0;
-  text-align: center;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
+.pp-avatar-cam {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 26px;
+  background: rgba(0,0,0,0.42);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; opacity: 0; transition: opacity 0.15s;
 }
-.pp-cover-phone {
-  font-size: 0.82rem;
-  color: rgba(255,255,255,0.72);
-  margin: 0;
-}
+.pp-avatar:hover .pp-avatar-cam { opacity: 1; }
 
-.pp-pills {
-  display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 0.2rem;
+.pp-name {
+  font-size: 17px; font-weight: 700; color: #fff;
+  letter-spacing: -0.015em; text-align: center;
 }
+.dark .pp-name { color: #e8eaf6; }
+
+.pp-phone { font-size: 12.5px; color: rgba(255,255,255,0.62); }
+.dark .pp-phone { color: rgba(255,255,255,0.32); }
+
+.pp-pills { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; margin-top: 2px; }
 .pp-pill {
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 0.2rem 0.65rem;
-  border-radius: 99px;
-  letter-spacing: 0.02em;
+  font-size: 10px; font-weight: 600;
+  padding: 2px 10px; border-radius: 99px;
 }
-.pill-admin  { background: rgba(255,255,255,0.22); color: #fff; }
-.pill-ok     { background: rgba(255,255,255,0.22); color: #fff; }
-.pill-warn   { background: rgba(255, 220, 80, 0.3); color: #fff3b0; }
-.pill-active { background: rgba(255,255,255,0.22); color: #fff; }
-.pill-off    { background: rgba(0,0,0,0.18);        color: rgba(255,255,255,0.6); }
-.pill-status { background: rgba(255,255,255,0.16);  color: rgba(255,255,255,0.8); }
+.pill-admin  { background: rgba(255,255,255,0.18); color: #fff; }
+.pill-ok     { background: rgba(74,222,128,0.22);  color: #bbf7d0; }
+.pill-warn   { background: rgba(251,191,36,0.25);  color: #fde68a; }
+.pill-active { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.80); }
+.pill-off    { background: rgba(0,0,0,0.18);        color: rgba(255,255,255,0.55); }
+.pill-status { background: rgba(255,255,255,0.13);  color: rgba(255,255,255,0.75); }
 
 /* ── Sheet ── */
 .pp-sheet {
-  background: #f5f7fa;
-  border-radius: 28px 28px 0 0;
-  margin-top: -3rem;
+  background: #ffffff;
+  border-radius: 20px 20px 0 0;
+  margin-top: -24px;
   flex: 1;
   padding: 0 0 2rem;
-  display: flex;
-  flex-direction: column;
-  z-index:2;
+  display: flex; flex-direction: column;
+  z-index: 2;
 }
-
-.dark .pp-sheet {
-  background: #1e2235;
-}
+.dark .pp-sheet { background: #1e2438; }
 
 .pp-handle {
-  width: 40px; height: 4px;
-  background: #ddd;
-  border-radius: 99px;
-  margin: 12px auto 20px;
-  flex-shrink: 0;
+  width: 36px; height: 3.5px; border-radius: 99px;
+  margin: 12px auto 14px; flex-shrink: 0;
+  background: #e0e0e0;
 }
-
-.dark .pp-handle { background: rgba(120,130,255,0.2); }
+.dark .pp-handle { background: rgba(130,140,255,0.18); }
 
 /* ── Flash ── */
 .pp-flash {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 1.25rem 0.75rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.84rem;
-  font-weight: 600;
-  border-radius: 14px;
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 14px 12px; padding: 10px 14px;
+  font-size: 12.5px; font-weight: 600;
+  border-radius: 10px;
 }
-.pp-flash--success {
-  background: var(--pp-accent-lt);
-  color: var(--pp-accent-dk);
+.pp-flash--success { background: var(--accent-lt); color: var(--accent-dk); }
+.pp-flash--error   { background: var(--danger-lt); color: var(--danger); }
+
+/* ── Section label ── */
+.pp-section-label {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  padding: 8px 16px 5px; margin: 0;
+  color: #ccc;
 }
-.pp-flash--error {
-  background: var(--pp-danger-lt);
-  color: var(--pp-danger);
-}
+.dark .pp-section-label { color: #3a4060; }
 
 /* ── Rows ── */
 .pp-rows { display: flex; flex-direction: column; }
 
 .pp-row {
-  display: flex;
-  align-items: center;
-  padding: 0 1.25rem;
-  min-height: 62px;
-  border-bottom: 0.5px solid #ebebeb;
-  gap: 0.75rem;
-  transition: background 0.12s;
+  display: flex; align-items: center;
+  padding: 0 16px; min-height: 54px;
+  border-bottom: 0.5px solid #f0f0f0;
+  gap: 10px;
 }
 .pp-row:last-child { border-bottom: none; }
-.pp-row:focus-within { background: rgba(99,102,241,0.04); }
+.pp-row:focus-within { background: rgba(79,110,247,0.03); }
+.dark .pp-row { border-bottom-color: rgba(130,140,255,0.08); }
+.dark .pp-row:focus-within { background: rgba(79,110,247,0.05); }
 
-.dark .pp-row { border-bottom-color: rgba(120,130,255,0.1); }
-.dark .pp-row:focus-within { background: rgba(99,102,241,0.06); }
-
-.pp-row-left {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  width: 130px;
-  flex-shrink: 0;
-}
 .pp-row-icon {
-  font-size: 1.1rem;
-  line-height: 1;
-  width: 22px;
-  text-align: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  background: rgba(79,110,247,0.08); color: #4F6EF7;
 }
+.dark .pp-row-icon { background: rgba(79,110,247,0.14); color: #818cf8; }
+
 .pp-row-label {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #333;
-  white-space: nowrap;
+  font-size: 13px; font-weight: 500;
+  width: 120px; flex-shrink: 0;
+  color: #222;
 }
-.dark .pp-row-label { color: #e8eaf6; }
+.dark .pp-row-label { color: #c7caff; }
 
 .pp-row-input { flex: 1; }
 
-/* Inputs */
-.pp-sheet input,
-.pp-sheet select {
+.pp-row-input input,
+.pp-row-input select {
   width: 100%;
   background: transparent;
-  border: none;
-  border-bottom: 1.5px solid #ddd;
-  border-radius: 0;
-  outline: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #222;
+  border: none; outline: none;
+  font-size: 13px; font-weight: 400;
+  color: #555; text-align: right;
   font-family: inherit;
-  text-align: right;
-  padding: 0.3rem 0;
-  -webkit-appearance: none;
-  appearance: none;
-  cursor: pointer;
-  transition: border-color 0.15s;
+  padding: 0;
+  -webkit-appearance: none; appearance: none;
+  cursor: text;
 }
-.pp-sheet input::placeholder { color: #bbb; }
-.pp-sheet input:focus,
-.pp-sheet select:focus {
-  border-bottom-color: var(--pp-accent);
-}
-.pp-sheet input:disabled,
-.pp-sheet select:disabled { opacity: 0.45; cursor: not-allowed; }
+.pp-row-input input::placeholder { color: #ccc; }
+.pp-row-input input:focus,
+.pp-row-input select:focus { color: var(--accent); }
+.pp-row-input input:disabled,
+.pp-row-input select:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.dark .pp-sheet input,
-.dark .pp-sheet select {
-  color: #e8eaf6;
-  border-bottom-color: rgba(120,130,255,0.2);
-}
-.dark .pp-sheet input::placeholder { color: #3a4060; }
-.dark .pp-sheet input:focus,
-.dark .pp-sheet select:focus {
-  border-bottom-color: #818cf8;
-}
+.dark .pp-row-input input,
+.dark .pp-row-input select { color: #6070a0; }
+.dark .pp-row-input input::placeholder { color: #2e3650; }
+.dark .pp-row-input input:focus,
+.dark .pp-row-input select:focus { color: #818cf8; }
 
 /* ── Save button ── */
 .pp-save {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 1.25rem 1.25rem 0;
-  padding: 1rem;
-  background: linear-gradient(145deg, var(--pp-cover-from) 0%, var(--pp-cover-to) 100%);
-  color: #fff;
-  border: none;
-  border-radius: 18px;
-  font-size: 0.95rem;
-  font-weight: 800;
-  font-family: inherit;
-  cursor: pointer;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
-  transition: opacity 0.15s, transform 0.1s;
-  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 16px 14px 0;
+  padding: 13px;
+  width: calc(100% - 28px);
+  background: var(--accent);
+  color: #fff; border: none;
+  border-radius: 12px;
+  font-size: 14px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: opacity 0.15s, transform 0.10s;
 }
 .pp-save:hover:not(:disabled)  { opacity: 0.88; }
 .pp-save:active:not(:disabled) { transform: scale(0.985); }
-.pp-save:disabled              { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.pp-save:disabled              { opacity: 0.45; cursor: not-allowed; }
 
-.dark .pp-save {
-  box-shadow: 0 4px 16px rgba(49,46,129,0.5);
-}
+.dark .pp-save { background: #3a4fa8; }
 
 /* ── Spinner ── */
 .pp-spinner {
-  width: 15px; height: 15px;
-  border: 2.5px solid rgba(255,255,255,0.35);
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
   border-top-color: #fff;
   border-radius: 50%;
   animation: pp-spin 0.65s linear infinite;
@@ -546,12 +459,8 @@ const CSS = `
 }
 @keyframes pp-spin { to { transform: rotate(360deg); } }
 
-/* ── Mobile ── */
 @media (max-width: 480px) {
-  .pp-cover      { padding: 3rem 1rem 6.5rem; }
-  .pp-row-left   { width: 110px; }
-  .pp-row-label  { font-size: 0.83rem; }
-  .pp-sheet input,
-  .pp-sheet select { font-size: 0.85rem; }
+  .pp-cover  { padding: 16px 14px 44px; }
+  .pp-row-label { width: 100px; }
 }
 `;

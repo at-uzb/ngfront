@@ -101,41 +101,39 @@ export default TopNav
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-:root { --topnav-height: 7vh; }
+:root { --topnav-height: 52px; }
 
-/* ── Light — default ── */
+/* ── Color tokens ── */
 .top-nav {
-  --tn-bg:           rgba(255,255,255,0.82);
-  --tn-border:       rgba(103,104,238,0.15);
-  --tn-text:         #0f1117;
-  --tn-muted:        #7b8296;
-  --tn-hover-bg:     rgba(103,104,238,0.07);
-  --tn-hover-border: rgba(103,104,238,0.22);
-  --tn-divider:      rgba(103,104,238,0.12);
-  --tn-avatar-bg:    rgba(103,104,238,0.10);
-  --tn-avatar-bord:  rgba(103,104,238,0.22);
-  --tn-avatar-text:  #6768EE;
-  --tn-dot:          #ef4444;
-  --tn-dot-border:   rgba(255,255,255,0.9);
-  --tn-accent-bar:   #6768EE;
+  --tn-bg:           #4F6EF7;
+  --tn-text:         #ffffff;
+  --tn-muted:        rgba(255,255,255,0.70);
+  --tn-hover-bg:     rgba(255,255,255,0.12);
+  --tn-hover-border: rgba(255,255,255,0.22);
+  --tn-divider:      rgba(255,255,255,0.20);
+  --tn-avatar-bg:    rgba(255,255,255,0.16);
+  --tn-avatar-bord:  rgba(255,255,255,0.28);
+  --tn-avatar-text:  #ffffff;
+  --tn-dot:          #FCA5A5;
+  --tn-dot-border:   #4F6EF7;
+  --tn-back-border:  rgba(255,255,255,0.25);
 }
 
-/* ── Dark — when .dark ancestor present ── */
+/* ── Dark theme — deep navy ── */
 .app.dark .top-nav,
 .dark .top-nav {
-  --tn-bg:           rgba(19,22,42,0.85);
-  --tn-border:       rgba(131,132,243,0.22);
-  --tn-text:         #e4e7f5;
-  --tn-muted:        #6672a0;
-  --tn-hover-bg:     rgba(103,104,238,0.14);
-  --tn-hover-border: rgba(131,132,243,0.30);
-  --tn-divider:      rgba(131,132,243,0.18);
-  --tn-avatar-bg:    rgba(103,104,238,0.22);
-  --tn-avatar-bord:  rgba(131,132,243,0.40);
-  --tn-avatar-text:  #a5b4fc;
-  --tn-dot:          #f87171;
-  --tn-dot-border:   rgba(13,15,26,0.9);
-  --tn-accent-bar:   #6768EE;
+  --tn-bg:           #1A1F35;
+  --tn-text:         rgba(255,255,255,0.88);
+  --tn-muted:        rgba(255,255,255,0.42);
+  --tn-hover-bg:     rgba(255,255,255,0.07);
+  --tn-hover-border: rgba(255,255,255,0.12);
+  --tn-divider:      rgba(255,255,255,0.10);
+  --tn-avatar-bg:    rgba(255,255,255,0.08);
+  --tn-avatar-bord:  rgba(255,255,255,0.15);
+  --tn-avatar-text:  rgba(255,255,255,0.70);
+  --tn-dot:          #F87171;
+  --tn-dot-border:   #1A1F35;
+  --tn-back-border:  rgba(255,255,255,0.14);
 }
 
 /* ── Shell ── */
@@ -144,20 +142,13 @@ const CSS = `
   left: var(--nav-width, 225px); right: 0;
   height: var(--topnav-height);
   background: var(--tn-bg);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border-bottom: 1px solid var(--tn-border);
-
-  /* Blue accent line at the very bottom */
-  box-shadow: 0 2px 0 0 var(--tn-accent-bar),
-              0 1px 24px rgba(103,104,238,0.10),
-              inset 0 1px 0 rgba(131,132,243,0.08);
-
+  border-bottom: none;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.10);
   display: flex; align-items: center;
   padding: 0 20px; gap: 12px;
   z-index: 90;
   font-family: 'Inter', system-ui, sans-serif;
-  transition: left 0.2s, background 0.3s, border-color 0.3s;
+  transition: left 0.2s, background 0.25s;
 }
 
 @media (max-width: 1024px) and (min-width: 769px) { .top-nav { left: 64px; } }
@@ -166,78 +157,67 @@ const CSS = `
 /* ── Back button ── */
 .tn-back {
   display: flex; align-items: center; justify-content: center;
-  height: 28px; width: 28px;
-  border-radius: 8px;
-  border: 1px solid var(--tn-hover-border);
+  height: 28px; width: 28px; border-radius: 8px;
+  border: 1px solid var(--tn-back-border);
   background: transparent;
-  color: var(--tn-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-  padding: 0;
+  color: var(--tn-muted); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0; padding: 0;
 }
-
 .tn-back:hover { background: var(--tn-hover-bg); color: var(--tn-text); }
 
 /* ── Breadcrumb ── */
 .tn-breadcrumb {
   flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0;
 }
-
 .tn-section {
-  font-size: 13.5px; font-weight: 600;
-  color: var(--tn-text);
-  letter-spacing: -0.015em;
+  font-size: 14px; font-weight: 500;
+  color: var(--tn-text); letter-spacing: -0.01em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ── Controls ── */
 .tn-controls {
-  display: flex; align-items: center; gap: 3px;
+  display: flex; align-items: center; gap: 2px;
   flex-shrink: 0; margin-left: auto;
 }
 
 /* ── Icon buttons ── */
 .tn-btn {
-  width: 32px; height: 32px;
-  border-radius: 9px;
+  width: 34px; height: 34px; border-radius: 8px;
   background: transparent;
   border: 1px solid transparent;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  color: var(--tn-muted);
+  cursor: pointer; color: var(--tn-muted);
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   position: relative; flex-shrink: 0; padding: 0;
 }
-
 .tn-btn:hover {
   background: var(--tn-hover-bg);
   border-color: var(--tn-hover-border);
   color: var(--tn-text);
 }
-
-.tn-btn:active { transform: scale(0.94); }
+.tn-btn:active { transform: scale(0.93); }
 
 /* Notification dot */
 .tn-dot {
-  position: absolute; top: 6px; right: 6px;
+  position: absolute; top: 7px; right: 7px;
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--tn-dot);
   border: 1.5px solid var(--tn-dot-border);
   pointer-events: none;
-  animation: tn-pulse 2s ease-in-out infinite;
+  animation: tn-pulse 2.5s ease-in-out infinite;
 }
-
 @keyframes tn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
-  50%       { box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
 }
 
 /* Divider */
 .tn-divider {
-  width: 1px; height: 16px;
+  width: 1px; height: 18px;
   background: var(--tn-divider);
-  margin: 0 3px; flex-shrink: 0;
+  margin: 0 4px; flex-shrink: 0;
 }
 
 /* ── Avatar ── */
@@ -249,77 +229,20 @@ const CSS = `
   font-size: 10.5px; font-weight: 700;
   color: var(--tn-avatar-text);
   cursor: pointer; flex-shrink: 0;
-  letter-spacing: 0.03em; user-select: none;
-  text-decoration: none;
-  transition: box-shadow 0.18s, transform 0.15s;
+  letter-spacing: 0.04em; user-select: none;
+  text-decoration: none; margin-left: 4px;
+  transition: box-shadow 0.15s, transform 0.15s;
   overflow: hidden;
-  margin-left: 3px;
 }
-
 .tn-avatar:hover {
-  box-shadow: 0 0 0 3px rgba(103,104,238,0.18);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.22);
   transform: scale(1.06);
 }
-
 .tn-avatar-img {
   width: 100%; height: 100%;
   border-radius: 50%; object-fit: cover;
 }
 
-/* ── Mobile ── */
-@media (max-width: 768px) {
-  .top-nav {
-    background: #6768EE;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-bottom: none;
-    box-shadow: 0 2px 16px rgba(103,104,238,0.45);
-  }
-
-  .dark .top-nav {
-    background: #5556d4;
-    box-shadow: 0 2px 20px rgba(85,86,212,0.55);
-  }
-
-  .top-nav .tn-section { color: #ffffff; font-weight: 600; }
-
-  .top-nav .tn-btn {
-    color: rgba(255,255,255,0.75);
-    border-color: transparent;
-  }
-
-  .top-nav .tn-btn:hover {
-    background: rgba(255,255,255,0.14);
-    border-color: rgba(255,255,255,0.18);
-    color: #ffffff;
-  }
-
-  .top-nav .tn-back {
-    color: rgba(255,255,255,0.80);
-    border-color: rgba(255,255,255,0.22);
-  }
-
-  .top-nav .tn-back:hover {
-    background: rgba(255,255,255,0.14);
-    color: #ffffff;
-  }
-
-  .top-nav .tn-divider { background: rgba(255,255,255,0.22); }
-
-  .top-nav .tn-dot { background: #fca5a5; border-color: #6768EE; }
-
-  .top-nav .tn-avatar {
-    background: rgba(255,255,255,0.20);
-    border-color: rgba(255,255,255,0.30);
-    color: #ffffff;
-  }
-
-  .top-nav .tn-avatar:hover {
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.20);
-  }
-}
-
-/* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .tn-dot { animation: none; }
   .tn-avatar { transition: none; }
