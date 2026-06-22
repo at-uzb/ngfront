@@ -8,6 +8,7 @@ import Tasks from './components/Tasks'
 import TaskDetail from './components/TaskDetail'
 import Chat from './components/Chat'
 import News from './components/News'
+import KtFinishMedia from './components/KTFinishMedia'
 import TaskCreate from './components/TaskCreate'
 import NewsCreate from './components/NewsCreate'
 import NewsDetail from './components/NewsDetail'
@@ -143,6 +144,7 @@ function App() {
               <Route path="task/create" element={<TaskCreate />} />
               <Route path="news/create" element={<NewsCreate />} />
               <Route path="news/:slug"  element={<NewsDetail />} />
+              <Route path="tasks/:id/finish" element={<KtFinishMedia />} />
             </Route>
           </Route>
         </Routes>

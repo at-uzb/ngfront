@@ -102,8 +102,6 @@ export default function TaskDetail() {
   const [cmtFiles,       setCmtFiles]       = useState([])
   const [finishing,      setFinishing]      = useState(false)
   const [confirmDone,    setConfirmDone]    = useState(false)
-  const [approving,      setApproving]      = useState(false)
-  const [confirmApprove, setConfirmApprove] = useState(false)
 
   const commentEndRef = useRef(null)
   const cmtFileRef    = useRef(null)
@@ -273,7 +271,7 @@ export default function TaskDetail() {
           <div className="td-title-actions">
 
             {/* Edit controls */}
-            {canEdit && (
+            {canFinish && (
               editing ? (
                 <>
                   <button className="td-icon-btn confirm" onClick={handleSave} disabled={saving}>
@@ -290,34 +288,12 @@ export default function TaskDetail() {
               )
             )}
 
-            {/* Boshlash — can_approve + status is kutilmoqda */}
             {canApprove && !editing && task.status === 'kutilmoqda' && (
-              confirmApprove ? (
-                <div className="td-finish-confirm approve">
-                  <span className="td-finish-confirm-text">Jarayonga olasizmi?</span>
-                  <button
-                    className="td-action-btn approve confirm"
-                    onClick={() => { handleApprove(); setConfirmApprove(false) }}
-                    disabled={approving}
-                  >
-                    {approving
-                      ? <Loader size={13} className="t-spin" />
-                      : <Check size={13} strokeWidth={2.5} />
-                    }
-                    <span className="td-finish-label">Ha</span>
-                  </button>
-                  <button className="td-finish-cancel" onClick={() => setConfirmApprove(false)}>
-                    <X size={13} strokeWidth={2} />
-                  </button>
-                </div>
-              ) : (
-                <button className="td-action-btn approve" onClick={() => setConfirmApprove(true)}>
-                  <Play size={13} strokeWidth={2} />
-                  <span className="td-finish-label">Boshlash</span>
-                </button>
-              )
+              <button className="td-action-btn approve" onClick={() => navigate(`/tasks/${id}/finish/`)}>
+                <Play size={13} strokeWidth={2} />
+                <span className="td-finish-label">Davom etish</span>
+              </button>
             )}
-
             {/* Yakunlash — can_finish + status is jarayonda */}
             {canFinish && !editing && task.status === 'jarayonda' && (
               confirmDone ? (
