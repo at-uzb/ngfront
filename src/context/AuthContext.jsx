@@ -7,6 +7,7 @@ import React, {
   useMemo,
 } from 'react';
 import authService from '../lib/service';
+import { initGroupStore } from '../hooks/useGroupStore';
 
 const AuthContext = createContext(null);
 
@@ -49,13 +50,14 @@ export const AuthProvider = ({ children }) => {
         const userData = response.user ?? response;
         setUser(userData);
         setError(null);
+        initGroupStore(); // ← token already valid, safe to fetch groups
       } catch (err) {
         if (err.status !== 401) {
           console.error('Failed to restore session:', err);
         }
         setUser(null);
       } finally {
-        setLoading(false); // ← isReady becomes true after this
+        setLoading(false);
       }
     };
 
@@ -70,6 +72,7 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.login(credentials);
       const userData = response.user;
       setUser(userData);
+      initGroupStore(); // ← fresh login, token just set, safe to fetch groups
       return { success: true, user: userData };
     } catch (err) {
       const errorMessage = err.message || 'Login failed';
@@ -105,11 +108,11 @@ export const AuthProvider = ({ children }) => {
       logout,
       updateUser,
       refreshUser,
-      isReady:         !loading,           // ← true once /users/me/ resolves
+      isReady:         !loading,
       isAuthenticated: !!user,
-      isAdmin:         user?.is_admin   === true,
+      isAdmin:         user?.is_admin    === true,
       isVerified:      user?.is_verified === true,
-      isTasker:        user?.status     === 'tasker',
+      isTasker:        user?.status      === 'tasker',
     }),
     [user, loading, error, login, logout, updateUser, refreshUser]
   );

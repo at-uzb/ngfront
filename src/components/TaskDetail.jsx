@@ -53,7 +53,7 @@ const UZ_MONTHS = [
 
 function fmtDate(iso) {
   if (!iso) return '—'
-  const d = new Date(iso)
+  const d     = new Date(iso)
   const day   = d.getDate()
   const month = UZ_MONTHS[d.getMonth()]
   const year  = d.getFullYear()
@@ -88,20 +88,20 @@ export default function TaskDetail() {
   const navigate    = useNavigate()
   const { isAdmin } = useAuth()
 
-  const [task,           setTask]           = useState(null)
-  const [loading,        setLoading]        = useState(true)
-  const [error,          setError]          = useState(null)
-  const [editing,        setEditing]        = useState(false)
-  const [form,           setForm]           = useState({})
-  const [saving,         setSaving]         = useState(false)
-  const [saveErr,        setSaveErr]        = useState('')
-  const [commentText,    setCommentText]    = useState('')
-  const [sendingCmt,     setSendingCmt]     = useState(false)
-  const [uploading,      setUploading]      = useState(false)
-  const [lightbox,       setLightbox]       = useState(null)
-  const [cmtFiles,       setCmtFiles]       = useState([])
-  const [finishing,      setFinishing]      = useState(false)
-  const [confirmDone,    setConfirmDone]    = useState(false)
+  const [task,        setTask]        = useState(null)
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState(null)
+  const [editing,     setEditing]     = useState(false)
+  const [form,        setForm]        = useState({})
+  const [saving,      setSaving]      = useState(false)
+  const [saveErr,     setSaveErr]     = useState('')
+  const [commentText, setCommentText] = useState('')
+  const [sendingCmt,  setSendingCmt]  = useState(false)
+  const [uploading,   setUploading]   = useState(false)
+  const [lightbox,    setLightbox]    = useState(null)
+  const [cmtFiles,    setCmtFiles]    = useState([])
+  const [finishing,   setFinishing]   = useState(false)
+  const [confirmDone, setConfirmDone] = useState(false)
 
   const commentEndRef = useRef(null)
   const cmtFileRef    = useRef(null)
@@ -167,17 +167,14 @@ export default function TaskDetail() {
   const handleAddComment = async () => {
     const txt = commentText.trim()
     if (!txt && cmtFiles.length === 0) return
-
     setSendingCmt(true)
     try {
       const fd = new FormData()
       fd.append('text', txt)
-      cmtFiles.forEach(file => { fd.append('files', file) })
-
+      cmtFiles.forEach(file => fd.append('files', file))
       const res = await api.post(`/tasks/kts/${id}/comments/`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-
       setTask(prev => ({ ...prev, comments: [...(prev.comments ?? []), res.data] }))
       setCommentText('')
       setCmtFiles([])
@@ -185,39 +182,28 @@ export default function TaskDetail() {
     } catch (err) {
       console.error('Comment error:', err)
       setSaveErr("Izoh qo'shishda xatolik")
-    } finally {
-      setSendingCmt(false)
-    }
+    } finally { setSendingCmt(false) }
   }
 
   const handleApprove = async () => {
-    setApproving(true); setSaveErr('')
+    setSaving(true); setSaveErr('')
     try {
       await api.post(`/tasks/kts/${id}/approve/`)
-      setTask(prev => ({
-        ...prev,
-        status: 'jarayonda',
-        can_approve: false,
-      }))
+      setTask(prev => ({ ...prev, status: 'jarayonda', can_approve: false }))
     } catch { setSaveErr('Jarayonga olishda xatolik yuz berdi') }
-    finally  { setApproving(false) }
+    finally  { setSaving(false) }
   }
 
   const handleMarkDone = async () => {
     setFinishing(true); setSaveErr('')
     try {
       await api.post(`/tasks/kts/${id}/done/`)
-      setTask(prev => ({
-        ...prev,
-        status: 'bajarildi',
-        can_finish: false,
-      }))
+      setTask(prev => ({ ...prev, status: 'bajarildi', can_finish: false }))
     } catch { setSaveErr('Yakunlashda xatolik yuz berdi') }
     finally  { setFinishing(false) }
   }
 
   if (loading) return <DetailSkeleton />
-
   if (error) return (
     <div className="td-container">
       <button className="td-back-btn" onClick={() => navigate(-1)}>
@@ -236,6 +222,17 @@ export default function TaskDetail() {
   const canFinish  = task.can_finish       ?? false
   const comments   = task.comments         ?? []
 
+  // CHANGED: was  task.group  (single object)
+  // Now  task.groups  (array) — safe default to empty array
+  const groups = task.groups ?? []
+
+  // Collect all unique admins across every assigned group for the admins panel
+  // CHANGED: was  task.group?.group_admins
+  const allAdmins = groups.flatMap(g => g.group_admins ?? [])
+  const uniqueAdmins = allAdmins.filter(
+    (admin, idx, arr) => arr.findIndex(a => a.id === admin.id) === idx
+  )
+
   return (
     <div className="td-container">
 
@@ -251,27 +248,34 @@ export default function TaskDetail() {
           {task.is_overdue && (
             <span className="td-pill pill-overdue"><Clock size={10} /> Muddati o'tgan</span>
           )}
-          {task.group && (
-            <span className="td-pill pill-group">
-              <span className="td-grp-chip">{task.group.short_name}</span>
-              {task.group.name}
+
+          {/* CHANGED: was  task.group && <span>...</span>  (one pill)
+              Now renders one pill per group — 1 group looks identical to before */}
+          {groups.map(g => (
+            <span key={g.id} className="td-pill pill-group">
+              <span className="td-grp-chip">{g.short_name}</span>
+              {g.name}
+              {/* is_admin flag comes from KTDetailView.retrieve() per-group annotation */}
+              {g.is_admin && <Shield size={9} style={{ marginLeft: 3, opacity: 0.6 }} />}
             </span>
-          )}
+          ))}
         </div>
 
         <div className="td-hero-title-row">
           {editing ? (
-            <input className="td-title-input" value={form.name} autoFocus
+            <input
+              className="td-title-input"
+              value={form.name}
+              autoFocus
               onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setSaveErr('') }}
-              onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancelEdit() }} />
+              onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancelEdit() }}
+            />
           ) : (
             <h1 className="td-title">{task.name}</h1>
           )}
 
           <div className="td-title-actions">
-
-            {/* Edit controls */}
-            {canFinish && (
+            {canEdit && (
               editing ? (
                 <>
                   <button className="td-icon-btn confirm" onClick={handleSave} disabled={saving}>
@@ -294,7 +298,7 @@ export default function TaskDetail() {
                 <span className="td-finish-label">Davom etish</span>
               </button>
             )}
-            {/* Yakunlash — can_finish + status is jarayonda */}
+
             {canFinish && !editing && task.status === 'jarayonda' && (
               confirmDone ? (
                 <div className="td-finish-confirm">
@@ -304,10 +308,7 @@ export default function TaskDetail() {
                     onClick={() => { handleMarkDone(); setConfirmDone(false) }}
                     disabled={finishing}
                   >
-                    {finishing
-                      ? <Loader size={13} className="t-spin" />
-                      : <Check size={13} strokeWidth={2.5} />
-                    }
+                    {finishing ? <Loader size={13} className="t-spin" /> : <Check size={13} strokeWidth={2.5} />}
                     <span className="td-finish-label">Ha</span>
                   </button>
                   <button className="td-finish-cancel" onClick={() => setConfirmDone(false)}>
@@ -321,7 +322,6 @@ export default function TaskDetail() {
                 </button>
               )
             )}
-
           </div>
         </div>
 
@@ -329,12 +329,7 @@ export default function TaskDetail() {
 
         {task.created_by && (
           <div className="creator-card">
-            <Avatar
-              src={task.created_by.photo}
-              name={task.created_by.full_name}
-              size={36}
-              className="creator-avatar"
-            />
+            <Avatar src={task.created_by.photo} name={task.created_by.full_name} size={36} className="creator-avatar" />
             <div className="creator-meta">
               <div className="creator-meta-top">
                 <span className="creator-label">Topshiriq beruvchi</span>
@@ -495,16 +490,18 @@ export default function TaskDetail() {
         )}
       </div>
 
-      {/* GROUP ADMINS */}
-      {task.group?.group_admins?.length > 0 && (
+      {/* GROUP ADMINS
+          CHANGED: was  task.group?.group_admins  (admins of one group)
+          Now collects admins from ALL assigned groups, deduped by id */}
+      {uniqueAdmins.length > 0 && (
         <div className="td-section-card">
           <div className="td-section-hd">
             <User size={12} strokeWidth={1.8} />
             Bo'lim foydalanuvchilari
-            <span className="td-section-count">{task.group.group_admins.length}</span>
+            <span className="td-section-count">{uniqueAdmins.length}</span>
           </div>
           <div className="td-admins-list">
-            {task.group.group_admins.map(admin => (
+            {uniqueAdmins.map(admin => (
               <div key={admin.id} className="td-admin-row">
                 <Avatar src={admin.photo} name={admin.full_name} size={38} />
                 <div className="td-admin-info">

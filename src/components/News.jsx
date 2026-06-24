@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Loader2, Search, X, Newspaper, AlertTriangle, Calendar } from 'lucide-react'
+import { Plus, Loader2, Search, X, Newspaper, AlertTriangle, Calendar, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import api from '../lib/api'
@@ -7,7 +7,6 @@ import NewsModal from './NewsModal'
 
 const fmtDate = (iso) => {
   if (!iso) return null
-  // handle both "2026-05-26" and "2026-05-26T10:30:00Z" formats
   const match = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!match) return iso
   return `${match[3]}.${match[2]}.${match[1]}`
@@ -18,11 +17,11 @@ export default function News() {
   const navigate    = useNavigate()
 
   const [news,       setNews]       = useState([])
-  const [total,      setTotal]      = useState(0)
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState(null)
   const [query,      setQuery]      = useState('')
   const [activeSlug, setActiveSlug] = useState(null)
+  const [deleting,   setDeleting]   = useState(null) // slug being deleted
 
   const searchRef = useRef(null)
 
@@ -34,7 +33,6 @@ export default function News() {
       if (query) params.set('search', query)
       const { data } = await api.get(`/news/news/?${params}`)
       setNews(data.results ?? [])
-      setTotal(data.count  ?? 0)
     } catch {
       setError('Yangiliklar yuklanmadi')
     } finally {
@@ -47,103 +45,148 @@ export default function News() {
     return () => clearTimeout(timer)
   }, [fetchNews])
 
+  const handleDelete = async (e, slug) => {
+    e.stopPropagation()
+    if (!window.confirm('Bu yangilikni o\'chirishni tasdiqlaysizmi?')) return
+    setDeleting(slug)
+    try {
+      await api.delete(`/news/news/${slug}/`)
+      setNews(prev => prev.filter(n => n.slug !== slug))
+    } catch {
+      alert('O\'chirishda xatolik yuz berdi')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   return (
     <>
       <style>{CSS}</style>
-      <div className="news-page">
+      <div className="np">
 
-        <div className="news-toolbar">
-          <div className="news-search-wrap">
-            <Search size={13} strokeWidth={1.8} className="news-search-icon" />
+        {/* ── Toolbar ── */}
+        <div className="np-toolbar">
+          <div className="np-search-wrap">
+            <Search size={13} strokeWidth={1.8} className="np-search-ico" />
             <input
               ref={searchRef}
-              className="news-search"
+              className="np-search"
               type="text"
-              placeholder="Yangilik nomi..."
+              placeholder="Yangilik qidirish…"
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
             {query && (
-              <button
-                className="news-search-clear"
-                onClick={() => { setQuery(''); searchRef.current?.focus() }}
-              >
+              <button className="np-search-clear" onClick={() => { setQuery(''); searchRef.current?.focus() }}>
                 <X size={10} />
               </button>
             )}
           </div>
-
           {isAdmin && (
-            <button className="news-add-btn" onClick={() => navigate('/news/create/')}>
-              <Plus size={13} strokeWidth={2.5} />
-              <span className="news-btn-lbl">Qo'shish</span>
+            <button className="np-add-btn" onClick={() => navigate('/news/create/')}>
+              <Plus size={14} strokeWidth={2.5} />
+              <span className="np-btn-lbl">Qo'shish</span>
             </button>
           )}
         </div>
 
+        {/* ── States ── */}
         {loading ? (
-          <div className="news-state">
-            <Loader2 size={18} strokeWidth={1.5} className="news-spin" />
+          <div className="np-state">
+            <div className="np-spinner">
+              <div className="np-spinner-ring" />
+              <div className="np-spinner-ring np-spinner-ring--inner" />
+            </div>
           </div>
         ) : error ? (
-          <div className="news-state news-state--error">
-            <AlertTriangle size={16} strokeWidth={1.5} />
+          <div className="np-state np-state--error">
+            <AlertTriangle size={18} strokeWidth={1.5} />
             <p>{error}</p>
-            <button className="news-retry-btn" onClick={fetchNews}>Qayta urinish</button>
+            <button className="np-retry-btn" onClick={fetchNews}>Qayta urinish</button>
           </div>
         ) : news.length === 0 ? (
-          <div className="news-state">
-            <Newspaper size={22} strokeWidth={1.2} />
+          <div className="np-state">
+            <div className="np-empty-icon"><Newspaper size={22} strokeWidth={1.2} /></div>
             <p>Yangiliklar topilmadi</p>
           </div>
         ) : (
-          <div className="news-grid">
+          <div className="np-list">
             {news.map((item, i) => (
               <NewsCard
                 key={item.id}
                 item={item}
                 index={i}
-                onClick={() => setActiveSlug(item.slug)}
+                isAdmin={isAdmin}
+                deleting={deleting === item.slug}
+                onOpen={() => setActiveSlug(item.slug)}
+                onDelete={(e) => handleDelete(e, item.slug)}
               />
             ))}
           </div>
         )}
 
         <NewsModal slug={activeSlug} onClose={() => setActiveSlug(null)} />
-
       </div>
     </>
   )
 }
 
-function NewsCard({ item, index, onClick }) {
+function NewsCard({ item, index, isAdmin, deleting, onOpen, onDelete }) {
   return (
     <div
-      className="news-card"
-      style={{ animationDelay: `${index * 40}ms` }}
-      onClick={onClick}
+      className={`np-card${deleting ? ' np-card--deleting' : ''}`}
+      style={{ animationDelay: `${index * 35}ms` }}
+      onClick={onOpen}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}
+      onKeyDown={e => e.key === 'Enter' && onOpen()}
     >
-      <div className="news-card-thumb">
+      {/* Deleting overlay */}
+      {deleting && (
+        <div className="np-card-del-overlay">
+          <Loader2 size={18} className="np-spin" />
+          <span>O'chirilmoqda…</span>
+        </div>
+      )}
+
+      {/* Thumb */}
+      <div className="np-card-thumb">
         {item.thumbnail
           ? <img src={item.thumbnail} alt={item.title} loading="lazy" />
-          : <div className="news-card-thumb-placeholder"><Newspaper size={20} strokeWidth={1.2} /></div>
+          : <div className="np-card-thumb-ph"><Newspaper size={18} strokeWidth={1.2} /></div>
         }
+        {/* Status dot on thumb */}
+        {item.status === 'draft' && <span className="np-draft-dot" title="Qoralama" />}
       </div>
-      <div className="news-card-body">
-        <div className="news-card-title">{item.title}</div>
-        <div className="news-card-foot">
-          <span className="news-card-date">
-            <Calendar size={10} strokeWidth={1.8} />
-            {fmtDate(item.published_at)}
+
+      {/* Body */}
+      <div className="np-card-body">
+        <p className="np-card-title">{item.title}</p>
+        <div className="np-card-meta">
+          <span className="np-card-date">
+            <Calendar size={9} strokeWidth={2} />
+            {fmtDate(item.published_at) ?? '—'}
           </span>
-          <span className={`news-card-badge ${item.status}`}>
+          <span className={`np-card-badge np-card-badge--${item.status}`}>
             {item.status === 'published' ? 'Chop etilgan' : 'Qoralama'}
           </span>
         </div>
       </div>
+
+      {/* Delete button — admin only, appears on hover */}
+      {isAdmin && (
+        <button
+          className="np-card-del"
+          onClick={onDelete}
+          disabled={deleting}
+          title="O'chirish"
+        >
+          {deleting
+            ? <Loader2 size={13} className="np-spin" />
+            : <Trash2 size={13} />
+          }
+        </button>
+      )}
     </div>
   )
 }
@@ -152,283 +195,313 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ── Light tokens ── */
-.light .news-page {
-  --n-bg:        #ffffff;
-  --n-surface:   #f0f2ff;
-  --n-border:    rgba(103,104,238,0.12);
-  --n-border-h:  rgba(103,104,238,0.28);
-  --n-text:      #0f1117;
-  --n-muted:     #7b8296;
-  --n-subtle:    #b0b8cc;
-  --n-hover:     rgba(103,104,238,0.07);
-  --n-shadow-sm: 0 1px 2px rgba(103,104,238,0.06), 0 0 0 1px rgba(103,104,238,0.07);
-  --n-shadow-md: 0 4px 16px rgba(103,104,238,0.10), 0 0 0 1px rgba(103,104,238,0.10);
-  --n-error:     #ef4444;
-  --n-error-bg:  rgba(239,68,68,0.08);
+.light .np {
+  --np-bg:         #ffffff;
+  --np-surface:    #f4f5fe;
+  --np-border:     rgba(103,104,238,0.13);
+  --np-border-h:   rgba(103,104,238,0.30);
+  --np-text:       #0f1117;
+  --np-muted:      #7b8296;
+  --np-subtle:     #b0b8cc;
+  --np-hover:      rgba(103,104,238,0.05);
+  --np-shadow-sm:  0 1px 3px rgba(103,104,238,0.07), 0 0 0 1px rgba(103,104,238,0.07);
+  --np-shadow-md:  0 4px 18px rgba(103,104,238,0.11), 0 0 0 1px rgba(103,104,238,0.10);
+  --np-error:      #ef4444;
+  --np-error-bg:   rgba(239,68,68,0.07);
 }
 
 /* ── Dark tokens ── */
-.dark .news-page {
-  --n-bg:        #1e2438;
-  --n-surface:   #151a2e;
-  --n-border:    rgba(131,132,243,0.14);
-  --n-border-h:  rgba(131,132,243,0.30);
-  --n-text:      #e4e7f5;
-  --n-muted:     #4e5575;
-  --n-subtle:    #2d3354;
-  --n-hover:     rgba(103,104,238,0.10);
-  --n-shadow-sm: 0 0 0 1px rgba(131,132,243,0.10);
-  --n-shadow-md: 0 0 0 1px rgba(131,132,243,0.16), 0 8px 24px rgba(103,104,238,0.08);
-  --n-error:     #fca5a5;
-  --n-error-bg:  rgba(220,38,38,0.10);
+.dark .np {
+  --np-bg:         #13162a;
+  --np-surface:    #0f1122;
+  --np-border:     rgba(131,132,243,0.14);
+  --np-border-h:   rgba(131,132,243,0.32);
+  --np-text:       #e4e7f5;
+  --np-muted:      #4e5575;
+  --np-subtle:     #2d3354;
+  --np-hover:      rgba(103,104,238,0.09);
+  --np-shadow-sm:  0 0 0 1px rgba(131,132,243,0.10);
+  --np-shadow-md:  0 0 0 1px rgba(131,132,243,0.18), 0 6px 20px rgba(103,104,238,0.10);
+  --np-error:      #fca5a5;
+  --np-error-bg:   rgba(220,38,38,0.09);
 }
 
 /* ── Page ── */
-.news-page {
+.np {
   padding: 0 1rem 2rem;
   font-family: 'Inter', system-ui, sans-serif;
+  color: var(--np-text);
+  display: flex; flex-direction: column; gap: 12px;
 }
 
 /* ── Toolbar ── */
-.news-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 1rem;
+.np-toolbar {
+  display: flex; align-items: center; gap: 8px;
 }
 
 /* ── Search ── */
-.news-search-wrap {
-  position: relative;
-  flex: 1;
+.np-search-wrap {
+  position: relative; flex: 1;
 }
 
-.news-search-icon {
-  position: absolute;
-  left: 10px; top: 50%;
+.np-search-ico {
+  position: absolute; left: 11px; top: 50%;
   transform: translateY(-50%);
-  color: var(--n-subtle);
-  pointer-events: none;
+  color: var(--np-subtle); pointer-events: none;
 }
 
-.news-search {
-  width: 100%;
-  height: 36px;
+.np-search {
+  width: 100%; height: 36px;
   padding: 0 32px 0 32px;
-  font-size: 13px;
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--n-text);
-  background: var(--n-bg);
-  border: 1px solid #4F6EF7;
-  border-radius: 10px;
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  font-size: 13px; font-family: 'Inter', system-ui, sans-serif;
+  color: var(--np-text); background: var(--np-bg);
+  border: 1px solid #6768EE;
+  border-radius: 10px; outline: none; box-sizing: border-box;
+  transition: box-shadow 0.15s;
 }
 
-.news-search::placeholder { color: var(--n-subtle); }
+.np-search::placeholder { color: var(--np-subtle); }
 
-.news-search:focus {
-  border-color: #4F6EF7;
-  box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
+.np-search:focus {
+  box-shadow: 0 0 0 3px rgba(103,104,238,0.12);
 }
 
-.news-search-clear {
-  position: absolute;
-  right: 8px; top: 50%;
+.np-search-clear {
+  position: absolute; right: 8px; top: 50%;
   transform: translateY(-50%);
-  width: 17px; height: 17px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(79,110,247,0.12);
-  color: var(--n-muted);
-  cursor: pointer;
+  width: 17px; height: 17px; border-radius: 50%;
+  border: none; background: rgba(103,104,238,0.12);
+  color: var(--np-muted); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  padding: 0;
-  transition: background 0.12s;
+  padding: 0; transition: background 0.12s;
 }
-
-.news-search-clear:hover { background: #4F6EF7; color: #ffffff; }
+.np-search-clear:hover { background: #6768EE; color: #fff; }
 
 /* ── Add button ── */
-.news-add-btn {
+.np-add-btn {
   display: flex; align-items: center; gap: 5px;
-  height: 36px;
-  padding: 0 16px;
+  height: 36px; padding: 0 16px;
   font-size: 13px; font-weight: 600;
   font-family: 'Inter', system-ui, sans-serif;
-  color: #ffffff;
-  background: #4F6EF7;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background 0.15s;
+  color: #fff; background: #6768EE;
+  border: none; border-radius: 10px; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(103,104,238,0.30);
+  transition: background 0.15s, box-shadow 0.15s;
 }
-
-.news-add-btn:hover { background: #3a57d0; }
+.np-add-btn:hover { background: #5556d4; box-shadow: 0 2px 8px rgba(103,104,238,0.40); }
 
 @media (max-width: 640px) {
-  .news-btn-lbl { display: none; }
-  .news-add-btn { padding: 0; width: 36px; justify-content: center; }
+  .np-btn-lbl { display: none; }
+  .np-add-btn { padding: 0; width: 36px; justify-content: center; }
 }
 
 /* ── States ── */
-.news-state {
+.np-state {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 8px;
-  padding: 4rem 1rem;
-  color: var(--n-muted);
-  font-size: 13px;
+  gap: 10px; padding: 5rem 1rem;
+  color: var(--np-muted); font-size: 13px; text-align: center;
 }
+.np-state p { margin: 0; }
+.np-state--error { color: var(--np-error); }
+.np-state--error p { color: var(--np-error); }
 
-.news-state p { margin: 0; color: var(--n-muted); }
-.news-state--error     { color: var(--n-error); }
-.news-state--error p   { color: var(--n-error); }
-
-.news-retry-btn {
-  margin-top: 4px;
-  height: 30px; padding: 0 16px;
-  font-size: 12px; font-weight: 500;
-  font-family: 'Inter', system-ui, sans-serif;
-  border: 1px solid rgba(220,38,38,0.22);
-  border-radius: 7px;
-  background: transparent;
-  cursor: pointer;
-  color: var(--n-error);
-  transition: background 0.15s;
+.np-empty-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: rgba(103,104,238,0.08);
+  border: 1px solid rgba(103,104,238,0.14);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(103,104,238,0.50);
 }
+.dark .np-empty-icon { background: rgba(103,104,238,0.12); border-color: rgba(131,132,243,0.18); }
 
-.news-retry-btn:hover { background: var(--n-error-bg); }
+.np-retry-btn {
+  height: 28px; padding: 0 14px; border-radius: 7px;
+  border: 1px solid rgba(239,68,68,0.22); background: transparent;
+  color: var(--np-error); font-size: 12px; font-weight: 500;
+  font-family: 'Inter', system-ui, sans-serif; cursor: pointer;
+  transition: background 0.14s;
+}
+.np-retry-btn:hover { background: var(--np-error-bg); }
 
-@keyframes newsSpin { to { transform: rotate(360deg); } }
-.news-spin { animation: newsSpin 0.9s linear infinite; }
+/* ── Spinner ── */
+.np-spinner { position: relative; width: 36px; height: 36px; }
+.np-spinner-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #6768EE;
+  animation: np-spin 0.9s linear infinite;
+}
+.np-spinner-ring--inner {
+  inset: 8px;
+  border-top-color: rgba(103,104,238,0.30);
+  animation-duration: 0.6s;
+  animation-direction: reverse;
+}
+@keyframes np-spin { to { transform: rotate(360deg); } }
+@keyframes np-spin-sm { to { transform: rotate(360deg); } }
+.np-spin { animation: np-spin-sm 0.75s linear infinite; display: inline-block; }
 
-/* ── Grid ── */
-.news-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* ── List ── */
+.np-list {
+  display: flex; flex-direction: column; gap: 8px;
 }
 
 /* ── Card ── */
-.news-card {
-  display: flex;
-  align-items: stretch;
-  background: var(--n-bg);
-  border: 1px solid var(--n-border);
-  border-left: 3px solid #4F6EF7;
+.np-card {
+  display: flex; align-items: stretch;
+  background: var(--np-bg);
+  border: 1px solid var(--np-border);
+  border-left: 2px solid #6768EE;
+  border-bottom: 2px solid #6768EE;
   border-radius: 12px;
-  overflow: hidden;
-  cursor: pointer;
-  box-shadow: var(--n-shadow-sm);
-  transition: border-color 0.15s, box-shadow 0.18s, transform 0.15s;
-  animation: newsCardIn 0.25s ease both;
+  overflow: hidden; cursor: pointer;
+  box-shadow: var(--np-shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.18s, transform 0.14s, opacity 0.2s;
+  animation: np-card-in 0.22s ease both;
   outline: none;
+  position: relative;
 }
 
-.news-card:hover {
-  border-color: var(--n-border-h);
-  border-left-color: #4F6EF7;
-  box-shadow: var(--n-shadow-md);
+.np-card:hover {
+  border-color: var(--np-border-h);
+  border-left-color: #6768EE;
+  border-bottom-color: #6768EE;
+  box-shadow: var(--np-shadow-md);
   transform: translateY(-1px);
 }
 
-.news-card:focus-visible {
-  box-shadow: 0 0 0 3px rgba(79,110,247,0.15);
+.np-card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(103,104,238,0.15);
 }
 
-@keyframes newsCardIn {
-  from { opacity: 0; transform: translateY(6px); }
+.np-card--deleting {
+  pointer-events: none;
+  position: relative;
+}
+
+/* Red overlay while deleting */
+.np-card-del-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(239,68,68,0.10);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border-radius: 11px;
+  color: #ef4444;
+  font-size: 12.5px; font-weight: 600;
+  animation: np-card-in 0.15s ease;
+}
+
+.dark .np-card-del-overlay {
+  background: rgba(239,68,68,0.14);
+  color: #fca5a5;
+}
+
+@keyframes np-card-in {
+  from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Thumbnail ── */
-.news-card-thumb {
-  width: 100px;
-  min-width: 100px;
-  height: 82px;
-  overflow: hidden;
-  flex-shrink: 0;
+/* ── Thumb ── */
+.np-card-thumb {
+  width: 90px; min-width: 90px; height: 76px;
+  overflow: hidden; flex-shrink: 0;
+  position: relative;
 }
 
-.news-card-thumb img {
-  width: 100%; height: 100%;
-  object-fit: cover; display: block;
+.np-card-thumb img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
   transition: transform 0.32s ease;
 }
+.np-card:hover .np-card-thumb img { transform: scale(1.06); }
 
-.news-card:hover .news-card-thumb img { transform: scale(1.05); }
-
-.news-card-thumb-placeholder {
+.np-card-thumb-ph {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  background: var(--n-surface);
-  color: var(--n-subtle);
+  background: var(--np-surface); color: var(--np-subtle);
+}
+
+/* Draft dot on thumb */
+.np-draft-dot {
+  position: absolute; top: 5px; left: 5px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #f59e0b;
+  border: 1.5px solid rgba(255,255,255,0.9);
 }
 
 /* ── Card body ── */
-.news-card-body {
-  flex: 1;
+.np-card-body {
+  flex: 1; min-width: 0;
   padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
+  display: flex; flex-direction: column;
   justify-content: space-between;
-  min-width: 0;
 }
 
-.news-card-title {
+.np-card-title {
   font-size: 13px; font-weight: 600;
-  color: var(--n-text);
-  line-height: 1.4;
+  color: var(--np-text); line-height: 1.4; margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.news-card-foot {
+.np-card-meta {
   display: flex; align-items: center;
   justify-content: space-between; gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
-.news-card-date {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 10.5px;
-  color: var(--n-muted);
+.np-card-date {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; color: var(--np-muted);
   font-family: 'JetBrains Mono', monospace;
 }
 
 /* ── Badge ── */
-.news-card-badge {
-  font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 20px;
-  flex-shrink: 0; letter-spacing: 0.02em;
-  border: 0.5px solid transparent;
+.np-card-badge {
+  font-size: 9.5px; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+  letter-spacing: 0.03em;
+  border: 0.5px solid transparent; white-space: nowrap;
 }
 
-.news-card-badge.published {
+.np-card-badge--published {
   background: rgba(34,197,94,0.10); color: #15803d;
   border-color: rgba(34,197,94,0.20);
 }
-.dark .news-card-badge.published {
+.dark .np-card-badge--published {
   background: rgba(34,197,94,0.12); color: #86efac;
   border-color: rgba(34,197,94,0.22);
 }
-.news-card-badge.draft {
+.np-card-badge--draft {
   background: rgba(245,158,11,0.10); color: #b45309;
   border-color: rgba(245,158,11,0.20);
 }
-.dark .news-card-badge.draft {
+.dark .np-card-badge--draft {
   background: rgba(245,158,11,0.12); color: #fbbf24;
   border-color: rgba(245,158,11,0.22);
 }
 
+/* ── Delete button ── */
+.np-card-del {
+  width: 34px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none; border-left: 1px solid var(--np-border);
+  color: var(--np-subtle);
+  cursor: pointer; padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.np-card:hover .np-card-del { opacity: 1; }
+.np-card-del:hover { background: rgba(239,68,68,0.07); color: #ef4444; }
+.dark .np-card-del:hover { background: rgba(239,68,68,0.10); color: #fca5a5; }
+
 /* ── Scrollbar ── */
-.news-page ::-webkit-scrollbar { width: 4px; height: 4px; }
-.news-page ::-webkit-scrollbar-track { background: transparent; }
-.news-page ::-webkit-scrollbar-thumb { background: rgba(79,110,247,0.18); border-radius: 99px; }
+.np ::-webkit-scrollbar { width: 4px; }
+.np ::-webkit-scrollbar-track { background: transparent; }
+.np ::-webkit-scrollbar-thumb { background: rgba(103,104,238,0.18); border-radius: 99px; }
 `

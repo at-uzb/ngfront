@@ -1,769 +1,794 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Trash2, Pencil, Check, X, UploadCloud,
-  Loader2, AlertTriangle, Film, ImageIcon,
-  Play, CheckCircle2,FileText,
+  Loader2, AlertTriangle, Play, Eye,
+  CheckCircle2, ImageOff, Plus, RefreshCw,
 } from 'lucide-react'
-import api from '../lib/api'
 import { useParams } from 'react-router-dom'
+import api from '../lib/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
 
-const MAX_SIZE = 50 * 1024 * 1024
+const MAX_FILE_BYTES = 50 * 1024 * 1024
 
-// ── Inline-editable description ───────────────────────────────────────────────
+const STATUS_META = {
+  'Kutilmoqda':    { color: '#b45309', bg: '#fef3c7', dot: '#f59e0b' },
+  'Jarayonda':     { color: '#4338ca', bg: '#ede9fe', dot: '#6366f1' },
+  'Bajarildi':     { color: '#065f46', bg: '#d1fae5', dot: '#10b981' },
+  'Bekor qilindi': { color: '#991b1b', bg: '#fee2e2', dot: '#ef4444' },
+}
 
-function EditableDesc({ value, onSave, placeholder = 'Tavsif…' }) {
-  const [editing, setEditing] = useState(false)
-  const [text,    setText]    = useState(value ?? '')
-  const [saving,  setSaving]  = useState(false)
-  const ref = useRef(null)
+const fmtDate = (iso) =>
+  iso ? new Date(iso).toLocaleDateString('uz-UZ', { year: 'numeric', month: '2-digit', day: '2-digit' }) : ''
 
-  useEffect(() => { if (editing) ref.current?.focus() }, [editing])
+const fmtBytes = (b) =>
+  !b ? '' : b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`
 
-  const save = async () => {
-    if (text === (value ?? '')) { setEditing(false); return }
-    setSaving(true)
-    try { await onSave(text) }
-    finally { setSaving(false); setEditing(false) }
-  }
+// ─────────────────────────────────────────────
+// StatusPill
+// ─────────────────────────────────────────────
 
-  if (editing) return (
-    <div className="km-desc-edit">
-      <textarea
-        ref={ref}
-        className="km-desc-textarea"
-        value={text}
-        rows={2}
-        onChange={e => setText(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save() }
-          if (e.key === 'Escape') { setText(value ?? ''); setEditing(false) }
-        }}
-        placeholder={placeholder}
-        maxLength={300}
-      />
-      <div className="km-desc-actions">
-        <button className="km-icon-btn km-icon-btn--confirm" onClick={save} disabled={saving}>
-          {saving ? <Loader2 size={11} className="km-spin" /> : <Check size={11} />}
-        </button>
-        <button className="km-icon-btn km-icon-btn--cancel" onClick={() => { setText(value ?? ''); setEditing(false) }}>
-          <X size={11} />
-        </button>
-      </div>
-    </div>
-  )
-
+function StatusPill({ status }) {
+  const m = STATUS_META[status]
+  if (!m) return null
   return (
-    <button className="km-desc-view" onClick={() => setEditing(true)}>
-      <span className={text ? 'km-desc-text' : 'km-desc-placeholder'}>
-        {text || placeholder}
-      </span>
-      <Pencil size={10} className="km-desc-pencil" />
-    </button>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '2px 10px', borderRadius: 20,
+      fontSize: 11, fontWeight: 600,
+      color: m.color, background: m.bg,
+      border: `1px solid ${m.dot}55`,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.dot, flexShrink: 0 }} />
+      {status}
+    </span>
   )
 }
 
-// ── Single media thumb ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Lightbox
+// ─────────────────────────────────────────────
 
-function MediaThumb({ item, onDelete, onPatch }) {
+function Lightbox({ src, onClose }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', h)
+    return () => document.removeEventListener('keydown', h)
+  }, [onClose])
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.90)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <button onClick={onClose} style={{
+        position: 'absolute', top: 16, right: 16,
+        width: 36, height: 36, borderRadius: '50%',
+        border: '1px solid rgba(255,255,255,0.3)',
+        background: 'rgba(255,255,255,0.12)',
+        color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer',
+      }}><X size={16} /></button>
+      <img
+        src={src} alt=""
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '92vw', maxHeight: '88vh', borderRadius: 6, boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}
+      />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// PhotoGrid  — renders a row of thumbnails (defect OR finish side)
+// ─────────────────────────────────────────────
+
+function PhotoGrid({ items, onPreview, size = 110 }) {
+  if (!items || items.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {items.map((item) => {
+        const isVideo = item.media_type === 'video'
+        return (
+          <div
+            key={item.id}
+            className="photo-thumb"
+            onClick={() => !isVideo && onPreview(item.media_url)}
+            style={{
+              position: 'relative',
+              width: size, height: size,
+              borderRadius: 4, overflow: 'hidden',
+              border: '1px solid #d1d5db',
+              background: '#f3f4f6',
+              cursor: isVideo ? 'default' : 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            {isVideo ? (
+              <div style={{
+                width: '100%', height: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: '#f0f9ff',
+              }}>
+                <Play size={22} fill="#6366f1" strokeWidth={0} />
+              </div>
+            ) : (
+              <>
+                <img
+                  src={item.media_url} alt={item.description || ''}
+                  loading="lazy"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+                <div className="photo-overlay" style={{
+                  position: 'absolute', inset: 0,
+                  background: 'rgba(0,0,0,0.30)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', opacity: 0, transition: 'opacity .15s',
+                }}><Eye size={18} /></div>
+              </>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// FinishPhotoGrid  — same as PhotoGrid but each thumb has edit/delete
+// ─────────────────────────────────────────────
+
+function FinishPhotoGrid({ items, onPreview, onDelete, onPatch, size = 110 }) {
+  if (!items || items.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {items.map((item) => (
+        <FinishThumb
+          key={item.id}
+          item={item}
+          size={size}
+          onPreview={onPreview}
+          onDelete={onDelete}
+          onPatch={onPatch}
+        />
+      ))}
+    </div>
+  )
+}
+
+function FinishThumb({ item, size = 110, onPreview, onDelete, onPatch }) {
   const [deleting, setDeleting] = useState(false)
+  const [editing,  setEditing]  = useState(false)
+  const [desc,     setDesc]     = useState(item.description ?? '')
+  const [saving,   setSaving]   = useState(false)
+  const textRef = useRef(null)
   const isVideo = item.media_type === 'video'
 
+  useEffect(() => { if (editing) textRef.current?.focus() }, [editing])
+
+  const saveDesc = async () => {
+    if (desc === (item.description ?? '')) { setEditing(false); return }
+    setSaving(true)
+    try { await onPatch(item.id, { description: desc }) }
+    finally { setSaving(false); setEditing(false) }
+  }
+
   const handleDelete = async () => {
-    if (!window.confirm("Bu mediafaylni o'chirishni tasdiqlaysizmi?")) return
+    if (!window.confirm("Bu faylni o'chirishni tasdiqlaysizmi?")) return
     setDeleting(true)
     try { await onDelete(item.id) }
     finally { setDeleting(false) }
   }
 
   return (
-    <div className={`km-thumb${deleting ? ' km-thumb--deleting' : ''}`}>
-      <div className="km-thumb-img">
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 4,
+      opacity: deleting ? 0.3 : 1, transition: 'opacity .2s',
+      width: size,
+    }}>
+      <div
+        className="finish-thumb"
+        onClick={() => !isVideo && onPreview(item.media_url)}
+        style={{
+          position: 'relative', width: size, height: size,
+          borderRadius: 4, overflow: 'hidden',
+          border: '1px solid #d1d5db',
+          background: '#f0fdf4',
+          cursor: isVideo ? 'default' : 'pointer',
+          flexShrink: 0,
+        }}
+      >
         {isVideo ? (
-          <div className="km-thumb-video">
-            <div className="km-play-ring"><Play size={14} fill="currentColor" strokeWidth={0} /></div>
+          <div style={{
+            width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Play size={22} fill="#059669" strokeWidth={0} />
           </div>
         ) : (
-          <img src={item.media} alt={item.description || ''} loading="lazy" />
-        )}
-        <button className="km-thumb-del" onClick={handleDelete} disabled={deleting} title="O'chirish">
-          {deleting ? <Loader2 size={10} className="km-spin" /> : <Trash2 size={10} />}
-        </button>
-      </div>
-      <EditableDesc
-        value={item.description}
-        onSave={(desc) => onPatch(item.id, { description: desc })}
-        placeholder="Tavsif qo'shing…"
-      />
-    </div>
-  )
-}
-
-// ── Media column (left — existing media) ─────────────────────────────────────
-
-function MediaColumn({ items, loading, onDelete, onPatch }) {
-  return (
-    <div className="km-col">
-      <div className="km-col-header km-col-header--left">
-        <ImageIcon size={13} strokeWidth={2} />
-        Aniqlangan kamchiliklar
-      </div>
-      <div className="km-col-body">
-        {loading ? (
           <>
-            <div className="km-skel-thumb" />
-            <div className="km-skel-thumb" />
-            <div className="km-skel-thumb" />
+            <img
+              src={item.media_url} alt={desc}
+              loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+            <div className="finish-overlay" style={{
+              position: 'absolute', inset: 0,
+              background: 'rgba(0,0,0,0.28)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', opacity: 0, transition: 'opacity .15s',
+            }}><Eye size={18} /></div>
           </>
-        ) : items.length === 0 ? (
-          <div className="km-col-empty">
-            <Film size={20} strokeWidth={1.2} />
-            <span>Hali fayl yo'q</span>
-          </div>
-        ) : (
-          <div className="km-thumbs-grid">
-            {items.map(item => (
-              <MediaThumb
-                key={item.id}
-                item={item}
-                onDelete={onDelete}
-                onPatch={onPatch}
-              />
-            ))}
-          </div>
         )}
+
+        {/* Date chip */}
+        <span style={{
+          position: 'absolute', bottom: 3, left: 3,
+          fontSize: 8, fontWeight: 600,
+          background: 'rgba(0,0,0,0.55)', color: '#fff',
+          padding: '1px 4px', borderRadius: 3, pointerEvents: 'none',
+        }}>{fmtDate(item.uploaded_at)}</span>
+
+        {/* Action buttons */}
+        <div className="finish-actions" style={{
+          position: 'absolute', top: 3, right: 3,
+          display: 'flex', gap: 2, opacity: 0, transition: 'opacity .15s',
+        }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setEditing(true) }}
+            title="Tahrirlash"
+            style={actionBtn('#6366f1')}
+          ><Pencil size={9} /></button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDelete() }}
+            disabled={deleting}
+            title="O'chirish"
+            style={actionBtn('#ef4444')}
+          >
+            {deleting
+              ? <Loader2 size={9} style={{ animation: 'spin .75s linear infinite' }} />
+              : <Trash2 size={9} />}
+          </button>
+        </div>
       </div>
+
+      {/* Inline desc editor */}
+      {editing ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <textarea
+            ref={textRef}
+            rows={2}
+            value={desc}
+            maxLength={300}
+            onChange={(e) => setDesc(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveDesc() }
+              if (e.key === 'Escape') { setDesc(item.description ?? ''); setEditing(false) }
+            }}
+            placeholder="Tavsif…"
+            style={{
+              fontSize: 10, borderRadius: 4, border: '1px solid #6366f1',
+              padding: '3px 5px', resize: 'none', outline: 'none',
+              width: '100%', boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 3 }}>
+            <button onClick={saveDesc} disabled={saving} style={miniBtn('#059669', '#dcfce7')}>
+              {saving ? <Loader2 size={9} style={{ animation: 'spin .75s linear infinite' }} /> : <Check size={9} />}
+            </button>
+            <button onClick={() => { setDesc(item.description ?? ''); setEditing(false) }} style={miniBtn('#94a3b8', '#f1f5f9')}>
+              <X size={9} />
+            </button>
+          </div>
+        </div>
+      ) : desc ? (
+        <p
+          onClick={() => setEditing(true)}
+          title="Tahrirlash uchun bosing"
+          style={{
+            margin: 0, fontSize: 10, color: '#374151', lineHeight: 1.4,
+            cursor: 'pointer', wordBreak: 'break-word',
+          }}>{desc}</p>
+      ) : (
+        <button
+          onClick={() => setEditing(true)}
+          style={{
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            fontSize: 10, color: '#9ca3af', fontStyle: 'italic', textAlign: 'left',
+          }}
+        >Tavsif qo'shing…</button>
+      )}
     </div>
   )
 }
 
-// ── Upload column (right — new uploads) ──────────────────────────────────────
+const actionBtn = (color) => ({
+  width: 18, height: 18, borderRadius: 3, border: 'none',
+  background: `${color}dd`, color: '#fff', cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+})
 
-function UploadColumn({ taskId, onUploaded }) {
-  const [dragging, setDragging] = useState(false)
-  const [uploads,  setUploads]  = useState([])
-  const [descs,    setDescs]    = useState({})
+const miniBtn = (color, bg) => ({
+  flex: 1, height: 18, borderRadius: 4,
+  border: `1px solid ${color}55`, background: bg,
+  color, cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+})
+
+// ─────────────────────────────────────────────
+// UploadQueue  — pick + upload files for one defect row
+// ─────────────────────────────────────────────
+
+function UploadQueue({ taskId, defectId, onUploaded }) {
+  const [queue,  setQueue] = useState([])
+  const [open,   setOpen]  = useState(false)
   const inputRef = useRef(null)
 
-  const processFiles = (files) => {
-    const valid = Array.from(files).filter(f => {
-      if (f.size > MAX_SIZE) { alert(`${f.name} — maks 50 MB`); return false }
+  const addFiles = (files) => {
+    const valid = Array.from(files).filter((f) => {
+      if (f.size > MAX_FILE_BYTES) { alert(`${f.name} — maksimal hajm 50 MB`); return false }
       if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
-        alert(`${f.name} — faqat rasm va video`)
-        return false
+        alert(`${f.name} — faqat rasm yoki video fayl`); return false
       }
       return true
     })
     if (!valid.length) return
-
-    const entries = valid.map(f => ({
-      id:       Math.random().toString(36).slice(2),
-      file:     f,
-      preview:  f.type.startsWith('image/') ? URL.createObjectURL(f) : null,
-      isVideo:  f.type.startsWith('video/'),
-      progress: 0,
-      error:    null,
-      done:     false,
-    }))
-
-    setUploads(prev => [...prev, ...entries])
+    setOpen(true)
+    setQueue((prev) => [
+      ...prev,
+      ...valid.map((f) => ({
+        id:       crypto.randomUUID(),
+        file:     f,
+        preview:  f.type.startsWith('image/') ? URL.createObjectURL(f) : null,
+        isVideo:  f.type.startsWith('video/'),
+        desc:     '',
+        progress: 0,
+        error:    null,
+        done:     false,
+      })),
+    ])
   }
 
-  const uploadOne = async (uid) => {
-    const entry = uploads.find(u => u.id === uid)
-    if (!entry) return
+  const upd    = (id, p) => setQueue((prev) => prev.map((u) => u.id === id ? { ...u, ...p } : u))
+  const remove = (id)    => setQueue((prev) => {
+    const u = prev.find((x) => x.id === id)
+    if (u?.preview) URL.revokeObjectURL(u.preview)
+    return prev.filter((x) => x.id !== id)
+  })
 
-    const desc = descs[uid] ?? ''
+  const upload = async (id) => {
+    const u = queue.find((x) => x.id === id)
+    if (!u) return
     const form = new FormData()
-    form.append('media', entry.file)
-    if (desc) form.append('description', desc)
-
+    form.append('media',   u.file)
+    form.append('defect',  defectId)   // links this fix to its defect
+    if (u.desc) form.append('description', u.desc)
     try {
       await api.post(`/tasks/${taskId}/finish-media/`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (e) => {
-          const pct = Math.round((e.loaded / e.total) * 100)
-          setUploads(prev => prev.map(u => u.id === uid ? { ...u, progress: pct } : u))
-        },
+        onUploadProgress: (e) => upd(id, { progress: Math.round((e.loaded / e.total) * 100) }),
       })
-      setUploads(prev => prev.map(u => u.id === uid ? { ...u, progress: 100, done: true } : u))
+      upd(id, { progress: 100, done: true })
       onUploaded()
-      setTimeout(() => {
-        setUploads(prev => {
-          const item = prev.find(u => u.id === uid)
-          if (item?.preview) URL.revokeObjectURL(item.preview)
-          return prev.filter(u => u.id !== uid)
-        })
-        setDescs(prev => { const n = { ...prev }; delete n[uid]; return n })
-      }, 2000)
+      setTimeout(() => remove(id), 2000)
     } catch {
-      setUploads(prev => prev.map(u => u.id === uid ? { ...u, error: 'Yuklashda xatolik' } : u))
+      upd(id, { error: 'Yuklashda xatolik yuz berdi', progress: 0 })
     }
   }
 
-  const removeQueued = (uid) => {
-    setUploads(prev => {
-      const item = prev.find(u => u.id === uid)
-      if (item?.preview) URL.revokeObjectURL(item.preview)
-      return prev.filter(u => u.id !== uid)
-    })
-    setDescs(prev => { const n = { ...prev }; delete n[uid]; return n })
-  }
-
-  const onDrop = (e) => {
-    e.preventDefault()
-    setDragging(false)
-    processFiles(e.dataTransfer.files)
-  }
-
   return (
-    <div className="km-col">
-      <div className="km-col-header km-col-header--right">
-        <UploadCloud size={13} strokeWidth={2} />
-        Bartaraf etilganligi
-      </div>
-      <div className="km-col-body">
-
-        {uploads.length > 0 && (
-          <div className="km-thumbs-grid">
-            {uploads.map(u => (
-              <div key={u.id} className={`km-thumb${u.done ? ' km-thumb--done' : ''}${u.error ? ' km-thumb--error' : ''}`}>
-                <div className="km-thumb-img">
-                  {u.isVideo ? (
-                    <div className="km-thumb-video">
-                      <div className="km-play-ring"><Play size={14} fill="currentColor" strokeWidth={0} /></div>
-                    </div>
-                  ) : u.preview ? (
-                    <img src={u.preview} alt={u.file.name} />
-                  ) : null}
-
-                  {!u.done && !u.error && u.progress > 0 && (
-                    <div className="km-thumb-progress-overlay">
-                      <span className="km-thumb-pct">{u.progress}%</span>
-                    </div>
-                  )}
-                  {u.done && (
-                    <div className="km-thumb-done-overlay">
-                      <CheckCircle2 size={20} strokeWidth={2} />
-                    </div>
-                  )}
-                  {u.error && (
-                    <div className="km-thumb-error-overlay">
-                      <AlertTriangle size={16} strokeWidth={2} />
-                    </div>
-                  )}
-                  {!u.progress && !u.done && (
-                    <button className="km-thumb-del" onClick={() => removeQueued(u.id)}>
-                      <X size={10} />
-                    </button>
-                  )}
-                  {!u.done && !u.error && (
-                    <div className="km-thumb-bar">
-                      <div className="km-thumb-bar-fill" style={{ width: `${u.progress}%` }} />
-                    </div>
-                  )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {/* Queue items */}
+      {queue.map((u) => (
+        <div key={u.id} style={{
+          display: 'flex', gap: 8, padding: '6px 8px', borderRadius: 6,
+          border: `1px solid ${u.done ? '#86efac' : u.error ? '#fca5a5' : '#e5e7eb'}`,
+          background: u.done ? '#f0fdf4' : u.error ? '#fff1f2' : '#f9fafb',
+        }}>
+          {/* Preview */}
+          <div style={{
+            width: 38, height: 38, borderRadius: 4, overflow: 'hidden',
+            background: '#e5e7eb', flexShrink: 0, position: 'relative',
+          }}>
+            {u.isVideo
+              ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Play size={12} fill="#6366f1" strokeWidth={0} />
                 </div>
-
-                <div className="km-upload-desc-row">
-                  <textarea
-                    className="km-desc-textarea km-desc-textarea--sm"
-                    rows={2}
-                    placeholder="Tavsif qo'shing…"
-                    value={descs[u.id] ?? ''}
-                    onChange={e => setDescs(prev => ({ ...prev, [u.id]: e.target.value }))}
-                    disabled={u.progress > 0 || u.done}
-                  />
-                  {!u.done && !u.error && !u.progress && (
-                    <button className="km-upload-send-btn" onClick={() => uploadOne(u.id)}>
-                      <UploadCloud size={12} />
-                      Yuklash
-                    </button>
-                  )}
-                  {u.error && (
-                    <button className="km-upload-retry-btn" onClick={() => {
-                      setUploads(prev => prev.map(x => x.id === u.id ? { ...x, error: null, progress: 0 } : x))
-                      uploadOne(u.id)
-                    }}>
-                      Qayta
-                    </button>
-                  )}
-                </div>
+              : u.preview
+                ? <img src={u.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : null}
+            {u.progress > 0 && !u.done && !u.error && (
+              <div style={{
+                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 8, fontWeight: 700, color: '#fff',
+              }}>{u.progress}%</div>
+            )}
+            {u.done && (
+              <div style={{
+                position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.55)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+              }}><CheckCircle2 size={13} /></div>
+            )}
+            {u.progress > 0 && !u.done && !u.error && (
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.2)' }}>
+                <div style={{ height: '100%', width: `${u.progress}%`, background: '#6366f1', transition: 'width .2s' }} />
               </div>
-            ))}
+            )}
           </div>
-        )}
 
-        <div
-          className={`km-dropzone${dragging ? ' km-dropzone--drag' : ''}`}
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={e => e.key === 'Enter' && inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            style={{ display: 'none' }}
-            onChange={e => processFiles(e.target.files)}
-          />
-          <UploadCloud size={18} strokeWidth={1.5} />
-          <span>{dragging ? 'Tashlang…' : 'Fayl tanlash yoki tashlang'}</span>
-          <span className="km-drop-hint">Rasm · Video · Maks 50 MB</span>
+          {/* Info */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {u.file.name}
+            </span>
+            <span style={{ fontSize: 9, color: '#9ca3af' }}>{fmtBytes(u.file.size)}</span>
+            <textarea
+              rows={1}
+              placeholder="Tavsif (ixtiyoriy)…"
+              value={u.desc}
+              onChange={(e) => upd(u.id, { desc: e.target.value })}
+              disabled={u.progress > 0 || u.done}
+              style={{
+                fontSize: 10, borderRadius: 3, border: '1px solid #e5e7eb',
+                padding: '2px 4px', resize: 'none', outline: 'none',
+                background: '#fff', color: '#111827', width: '100%', boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {u.error && <span style={{ fontSize: 9, color: '#ef4444' }}>{u.error}</span>}
+              {!u.done && !u.progress && !u.error && (
+                <>
+                  <button onClick={() => remove(u.id)} style={{ fontSize: 9, color: '#9ca3af', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}>
+                    Bekor
+                  </button>
+                  <button onClick={() => upload(u.id)} style={{
+                    marginLeft: 'auto', height: 18, padding: '0 7px', fontSize: 9, fontWeight: 600,
+                    background: '#6366f1', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 2,
+                  }}>
+                    <UploadCloud size={9} /> Yuklash
+                  </button>
+                </>
+              )}
+              {u.error && (
+                <button onClick={() => { upd(u.id, { error: null }); upload(u.id) }} style={{
+                  marginLeft: 'auto', fontSize: 9, color: '#ef4444',
+                  border: '1px solid #fca5a5', background: 'none', borderRadius: 3,
+                  padding: '1px 5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2,
+                }}>
+                  <RefreshCw size={8} /> Qayta
+                </button>
+              )}
+              {u.progress > 0 && !u.done && !u.error && (
+                <span style={{ marginLeft: 'auto', fontSize: 9, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Loader2 size={9} style={{ animation: 'spin .75s linear infinite' }} /> Yuklanmoqda…
+                </span>
+              )}
+            </div>
+          </div>
         </div>
+      ))}
 
-      </div>
+      {/* Add file trigger */}
+      <label style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
+        border: '1px dashed #d1d5db',
+        background: '#f9fafb', color: '#6b7280',
+        fontSize: 10, fontWeight: 500, userSelect: 'none',
+        alignSelf: 'flex-start',
+      }}>
+        <input
+          ref={inputRef}
+          type="file" accept="image/*,video/*" multiple
+          style={{ display: 'none' }}
+          onChange={(e) => addFiles(e.target.files)}
+        />
+        <Plus size={10} />
+        Fayl qo'shish
+      </label>
     </div>
   )
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// DefectRow  — the main paired row, mirrors the Word table layout
+// ─────────────────────────────────────────────
+
+function DefectRow({ index, taskId, defect, onDelete, onPatch, onUploaded }) {
+  const [lightbox, setLightbox] = useState(null)
+  const isFirst = index === 0
+
+  return (
+    <>
+      {/* Row wrapper — two equal columns, no outer padding so borders touch */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 160 }}>
+
+        {/* ── LEFT — defect (read-only) ── */}
+        <div style={{
+          padding: '14px 16px',
+          borderRight: '1px solid #d1d5db',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          {/* Photos — only if the defect has a media_url (some rows are text-only) */}
+          {defect.media_url && (
+            <PhotoGrid
+              items={[defect]}          // single defect per row in current API shape
+              onPreview={(src) => setLightbox(src)}
+              size={110}
+            />
+          )}
+
+          {/* Description text */}
+          {defect.description && (
+            <p style={{
+              margin: 0,
+              fontSize: 12, color: '#111827', lineHeight: 1.55,
+              fontStyle: 'italic',
+            }}>
+              {defect.description}
+            </p>
+          )}
+
+          {/* Empty state */}
+          {!defect.media_url && !defect.description && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#d1d5db', fontSize: 11 }}>
+              <ImageOff size={13} /> <span>Rasm yo'q</span>
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT — resolutions (editable) ── */}
+        <div style={{
+          padding: '14px 16px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          {/* Already uploaded fixes */}
+          {defect.finish_media.length > 0 && (
+            <FinishPhotoGrid
+              items={defect.finish_media}
+              onPreview={(src) => setLightbox(src)}
+              onDelete={onDelete}
+              onPatch={onPatch}
+              size={110}
+            />
+          )}
+
+          {/* Upload zone */}
+          <UploadQueue
+            taskId={taskId}
+            defectId={defect.id}
+            onUploaded={onUploaded}
+          />
+        </div>
+      </div>
+
+      {/* Row divider */}
+      <div style={{ height: 1, background: '#d1d5db' }} />
+
+      {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Skeleton
+// ─────────────────────────────────────────────
+
+function SkeletonRow() {
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 160 }}>
+        {[0, 1].map((side) => (
+          <div key={side} style={{
+            padding: '14px 16px',
+            borderRight: side === 0 ? '1px solid #d1d5db' : undefined,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{
+                  width: 110, height: 110, borderRadius: 4,
+                  background: '#f3f4f6', animation: 'shimmer 1.4s ease-in-out infinite',
+                }} />
+              ))}
+            </div>
+            <div style={{ width: '80%', height: 10, borderRadius: 4, background: '#f3f4f6', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+            <div style={{ width: '60%', height: 10, borderRadius: 4, background: '#f3f4f6', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ height: 1, background: '#d1d5db' }} />
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────
 
 export default function KtFinishMedia() {
   const { id: taskId } = useParams()
-
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
 
-  // ── Initial load — no fetchMedia in deps, only taskId ─────────────────────
-  useEffect(() => {
-    let cancelled = false
-
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const { data: json } = await api.get(`/tasks/${taskId}/finish-media/`)
-        if (!cancelled) setData(json)
-      } catch {
-        if (!cancelled) setError('Media fayllar yuklanmadi')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [taskId])
-
-  // ── Manual refresh after upload — stable reference ─────────────────────────
   const fetchMedia = useCallback(async () => {
+    setLoading(true); setError(null)
     try {
       const { data: json } = await api.get(`/tasks/${taskId}/finish-media/`)
       setData(json)
     } catch {
-      // silent — user already sees existing data
+      setError("Ma'lumotlarni yuklab bo'lmadi")
+    } finally {
+      setLoading(false)
     }
   }, [taskId])
 
+  useEffect(() => { fetchMedia() }, [fetchMedia])
+
   const handleDelete = useCallback(async (mediaId) => {
     await api.delete(`/tasks/${taskId}/finish-media/${mediaId}/`)
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      total: prev.total - 1,
-      media: prev.media.filter(m => m.id !== mediaId),
+      total: Math.max(0, (prev.total ?? 1) - 1),
+      defects: prev.defects.map((d) => ({
+        ...d,
+        finish_media: d.finish_media.filter((m) => m.id !== mediaId),
+      })),
     }))
   }, [taskId])
 
   const handlePatch = useCallback(async (mediaId, body) => {
     const { data: updated } = await api.patch(`/tasks/${taskId}/finish-media/${mediaId}/`, body)
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      media: prev.media.map(m => m.id === mediaId ? { ...m, ...updated } : m),
+      defects: prev.defects.map((d) => ({
+        ...d,
+        finish_media: d.finish_media.map((m) => (m.id === mediaId ? { ...m, ...updated } : m)),
+      })),
     }))
   }, [taskId])
 
+  const defects = data?.defects ?? []
+
+  // ── Error ────────────────────────────────────────────────────────────────
+
   if (error) return (
-    <div className="km-root">
-      <div className="km-error-state">
-        <AlertTriangle size={18} />
-        <p>{error}</p>
-        <button className="km-retry-btn" onClick={() => {
-          setError(null)
-          setLoading(true)
-          api.get(`/tasks/${taskId}/finish-media/`)
-            .then(({ data: json }) => setData(json))
-            .catch(() => setError('Media fayllar yuklanmadi'))
-            .finally(() => setLoading(false))
+    <>
+      <style>{CSS}</style>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        gap: 10, padding: '3rem 1rem', color: '#dc2626',
+      }}>
+        <AlertTriangle size={20} />
+        <p style={{ margin: 0, fontSize: 13 }}>{error}</p>
+        <button onClick={fetchMedia} style={{
+          padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500,
+          border: '1px solid #fca5a5', background: 'none', color: '#dc2626',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
         }}>
-          Qayta urinish
+          <RefreshCw size={12} /> Qayta urinish
         </button>
       </div>
-    </div>
+    </>
   )
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <>
-    <style>{CSS}</style>
-    <div className="km-root">
+      <style>{CSS}</style>
 
-      <div className="km-header">
+      {/* ── Table wrapper — exactly like the Word doc ── */}
+      <div style={{
+        border: '1.5px solid #d1d5db',
+        borderRadius: 6,
+        overflow: 'hidden',
+        fontFamily: "'Times New Roman', Times, serif",
+      }}>
+
+        {/* Title row */}
+        <div style={{
+          padding: '10px 16px',
+          textAlign: 'center',
+          borderBottom: '1.5px solid #d1d5db',
+          background: '#fff',
+        }}>
+          {loading ? (
+            <div style={{ width: 240, height: 16, borderRadius: 4, background: '#f3f4f6', margin: '0 auto', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
+                "{data?.task_name ?? 'Topshiriq'}" xizmati
+              </span>
+              <StatusPill status={data?.task_status} />
+              {(data?.total ?? 0) > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, color: '#4338ca',
+                  background: '#ede9fe', borderRadius: 20, padding: '1px 8px',
+                  border: '1px solid #c4b5fd55',
+                }}>{data.total} ta yechim</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Column header row */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          borderBottom: '1.5px solid #d1d5db',
+          background: '#fff',
+        }}>
+          <div style={{
+            padding: '8px 16px',
+            borderRight: '1px solid #d1d5db',
+            textAlign: 'center',
+            fontSize: 13, fontWeight: 700,
+            color: '#dc2626',
+            borderTop: '3px solid #dc2626',
+          }}>
+            Aniqlangan kamchiliklar
+          </div>
+          <div style={{
+            padding: '8px 16px',
+            textAlign: 'center',
+            fontSize: 13, fontWeight: 700,
+            color: '#059669',
+            borderTop: '3px solid #059669',
+          }}>
+            Bartaraf qilinganiligi
+          </div>
+        </div>
+
+        {/* Data rows */}
         {loading ? (
-          <div className="km-skel-title" />
-        ) : (
           <>
-            <h2 className="km-title">{data?.task_name ?? 'Topshiriq'}</h2>
-            <span className="km-total-badge">{data?.total ?? 0} fayl</span>
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
           </>
+        ) : defects.length === 0 ? (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 6, padding: '3rem 1rem', color: '#9ca3af', fontSize: 12,
+          }}>
+            <ImageOff size={20} strokeWidth={1.2} />
+            <span>Kamchiliklar topilmagan</span>
+          </div>
+        ) : (
+          defects.map((defect, i) => (
+            <DefectRow
+              key={defect.id}
+              index={i}
+              taskId={taskId}
+              defect={defect}
+              onDelete={handleDelete}
+              onPatch={handlePatch}
+              onUploaded={fetchMedia}
+            />
+          ))
         )}
       </div>
-
-      <div className="km-two-col">
-        <MediaColumn
-          items={data?.media ?? []}
-          loading={loading}
-          onDelete={handleDelete}
-          onPatch={handlePatch}
-        />
-
-        <div className="km-col-divider" />
-
-        <UploadColumn taskId={taskId} onUploaded={fetchMedia} />
-      </div>
-
-    </div>
     </>
   )
 }
-// ── Styles ─────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// CSS — only what inline styles can't express
+// ─────────────────────────────────────────────
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes spin    { to { transform:rotate(360deg) } }
 
-/* ── Light tokens ── */
-.light .km-root {
-  --km-bg:        #ffffff;
-  --km-surface:   #f4f5fe;
-  --km-border:    rgba(103,104,238,0.14);
-  --km-border-h:  rgba(103,104,238,0.30);
-  --km-text:      #0f1117;
-  --km-muted:     #7b8296;
-  --km-subtle:    #b0b8cc;
-  --km-hover:     rgba(103,104,238,0.07);
-  --km-shadow:    0 1px 2px rgba(103,104,238,0.06), 0 0 0 1px rgba(103,104,238,0.08);
-  --km-shadow-md: 0 4px 16px rgba(103,104,238,0.10), 0 0 0 1px rgba(103,104,238,0.10);
-}
-
-/* ── Dark tokens ── */
-.dark .km-root {
-  --km-bg:        #13162a;
-  --km-surface:   #0f1122;
-  --km-border:    rgba(131,132,243,0.14);
-  --km-border-h:  rgba(131,132,243,0.30);
-  --km-text:      #e4e7f5;
-  --km-muted:     #4e5575;
-  --km-subtle:    #2d3354;
-  --km-hover:     rgba(103,104,238,0.10);
-  --km-shadow:    0 0 0 1px rgba(131,132,243,0.10);
-  --km-shadow-md: 0 0 0 1px rgba(131,132,243,0.16), 0 8px 24px rgba(103,104,238,0.08);
-}
-
-/* ── Root ── */
-.km-root {
-  display: flex; flex-direction: column; gap: 16px;
-  padding: 0 1rem 2rem;
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--km-text);
-}
-
-/* ── Header ── */
-.km-header {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-}
-
-.km-title {
-  font-size: 15px; font-weight: 700;
-  color: var(--km-text); letter-spacing: -0.02em; margin: 0;
-}
-
-.km-badge {
-  display: inline-flex; align-items: center;
-  padding: 2px 9px; border-radius: 20px;
-  font-size: 10.5px; font-weight: 600;
-  border: 0.5px solid; white-space: nowrap; letter-spacing: 0.02em;
-}
-
-.km-total-badge {
-  font-size: 11px; font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  color: #6768EE;
-  background: rgba(103,104,238,0.10);
-  border: 1px solid rgba(103,104,238,0.20);
-  border-radius: 20px; padding: 2px 10px;
-}
-.dark .km-total-badge { color: #a5b4fc; background: rgba(103,104,238,0.14); border-color: rgba(131,132,243,0.24); }
-
-.km-skel-title {
-  height: 18px; width: 200px; border-radius: 6px;
-  background: var(--km-surface);
-  animation: km-shimmer 1.4s ease-in-out infinite;
-}
-
-/* ── Two column wrapper ── */
-.km-two-col {
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr;
-  gap: 0;
-  background: var(--km-bg);
-  border: 1px solid var(--km-border);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: var(--km-shadow);
-  min-height: 400px;
-}
-
-.km-col-divider {
-  background: var(--km-border);
-  align-self: stretch;
-}
-
-/* ── Column ── */
-.km-col {
-  display: flex; flex-direction: column; min-width: 0;
-}
-
-.km-col-header {
-  display: flex; align-items: center; gap: 7px;
-  padding: 11px 16px;
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.07em;
-  border-bottom: 1px solid var(--km-border);
-  flex-shrink: 0;
-}
-
-.km-col-header--left  { color: #ef4444; background: rgba(239,68,68,0.04); border-top: 2px solid #ef4444; }
-.km-col-header--right { color: #10b981; background: rgba(16,185,129,0.04); border-top: 2px solid #10b981; }
-
-.dark .km-col-header--left  { background: rgba(239,68,68,0.06); }
-.dark .km-col-header--right { background: rgba(16,185,129,0.06); }
-
-.km-col-body {
-  flex: 1; padding: 14px;
-  display: flex; flex-direction: column; gap: 12px;
-  overflow-y: auto;
-}
-
-/* ── Thumbs grid inside a column ── */
-.km-thumbs-grid {
-  display: flex; flex-direction: column; gap: 14px;
-}
-
-/* ── Single thumb item ── */
-.km-thumb {
-  display: flex; flex-direction: column; gap: 6px;
-  transition: opacity 0.2s;
-}
-
-.km-thumb--deleting { opacity: 0.35; pointer-events: none; }
-.km-thumb--done .km-thumb-img { opacity: 0.7; }
-.km-thumb--error .km-thumb-img { border-color: rgba(239,68,68,0.40); }
-
-.km-thumb-img {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  border-radius: 9px;
-  overflow: hidden;
-  background: var(--km-surface);
-  border: 1px solid var(--km-border);
-}
-
-.km-thumb-img img {
-  width: 100%; height: 100%;
-  object-fit: cover; display: block;
-}
-
-/* Video placeholder */
-.km-thumb-video {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, rgba(103,104,238,0.08), rgba(103,104,238,0.16));
-}
-
-.km-play-ring {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(103,104,238,0.20);
-  border: 1.5px solid rgba(103,104,238,0.40);
-  display: flex; align-items: center; justify-content: center;
-  color: #6768EE; padding-left: 2px;
-}
-.dark .km-play-ring { color: #a5b4fc; background: rgba(103,104,238,0.25); border-color: rgba(131,132,243,0.40); }
-
-/* Delete button */
-.km-thumb-del {
-  position: absolute; top: 5px; right: 5px;
-  width: 22px; height: 22px; border-radius: 6px;
-  border: 1px solid rgba(239,68,68,0.20);
-  background: rgba(13,15,26,0.60);
-  color: #fca5a5;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; padding: 0; opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
-  backdrop-filter: blur(4px);
-}
-.km-thumb:hover .km-thumb-del, .km-thumb .km-thumb-del:hover { opacity: 1; }
-.km-thumb-del:hover { background: rgba(239,68,68,0.80); color: #fff; border-color: transparent; }
-
-/* Progress bar inside thumb */
-.km-thumb-bar {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: 3px; background: rgba(255,255,255,0.15);
-}
-.km-thumb-bar-fill { height: 100%; background: #6768EE; transition: width 0.2s ease; }
-
-/* Overlay states */
-.km-thumb-progress-overlay,
-.km-thumb-done-overlay,
-.km-thumb-error-overlay {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 9px;
-}
-.km-thumb-progress-overlay { background: rgba(13,15,26,0.45); }
-.km-thumb-done-overlay     { background: rgba(16,185,129,0.25); color: #10b981; }
-.km-thumb-error-overlay    { background: rgba(239,68,68,0.25); color: #ef4444; }
-.km-thumb-pct { font-size: 13px; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; }
-
-/* ── Editable description ── */
-.km-desc-view {
-  display: flex; align-items: flex-start; gap: 5px;
-  background: none; border: none; padding: 0;
-  cursor: pointer; text-align: left; width: 100%; min-height: 16px;
-}
-.km-desc-text        { font-size: 12px; font-weight: 500; color: var(--km-text); line-height: 1.45; flex: 1; }
-.km-desc-placeholder { font-size: 12px; color: var(--km-subtle); font-style: italic; flex: 1; }
-.km-desc-pencil      { color: var(--km-subtle); flex-shrink: 0; margin-top: 2px; opacity: 0; transition: opacity 0.15s; }
-.km-desc-view:hover .km-desc-pencil { opacity: 1; }
-
-.km-desc-edit { display: flex; flex-direction: column; gap: 5px; }
-
-.km-desc-textarea {
-  width: 100%;
-  font-size: 12px; font-family: 'Inter', system-ui, sans-serif;
-  color: var(--km-text); background: var(--km-surface);
-  border: 1px solid #6768EE; border-radius: 7px;
-  padding: 6px 8px; outline: none; resize: none;
-  box-sizing: border-box;
-  box-shadow: 0 0 0 2px rgba(103,104,238,0.10);
-  transition: box-shadow 0.15s;
-}
-.km-desc-textarea:focus { box-shadow: 0 0 0 3px rgba(103,104,238,0.14); }
-.km-desc-textarea--sm   { font-size: 11.5px; }
-
-.km-desc-actions { display: flex; gap: 4px; }
-
-.km-icon-btn {
-  width: 22px; height: 22px; border-radius: 6px;
-  border: 1px solid var(--km-border); background: transparent;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; padding: 0; transition: all 0.14s;
-}
-.km-icon-btn--confirm { color: #10b981; border-color: rgba(16,185,129,0.25); }
-.km-icon-btn--confirm:hover { background: rgba(16,185,129,0.10); }
-.km-icon-btn--cancel  { color: var(--km-muted); }
-.km-icon-btn--cancel:hover { background: var(--km-hover); }
-
-/* ── Upload desc + send row ── */
-.km-upload-desc-row { display: flex; flex-direction: column; gap: 5px; }
-
-.km-upload-send-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  align-self: flex-end;
-  height: 26px; padding: 0 12px;
-  font-size: 11.5px; font-weight: 600;
-  font-family: 'Inter', system-ui, sans-serif;
-  background: #6768EE; color: #ffffff; border: none;
-  border-radius: 7px; cursor: pointer;
-  box-shadow: 0 1px 4px rgba(103,104,238,0.30);
-  transition: background 0.15s;
-}
-.km-upload-send-btn:hover { background: #5556d4; }
-
-.km-upload-retry-btn {
-  align-self: flex-end;
-  height: 24px; padding: 0 10px;
-  font-size: 11px; font-weight: 600; font-family: 'Inter', system-ui, sans-serif;
-  background: transparent; color: #ef4444;
-  border: 1px solid rgba(239,68,68,0.25); border-radius: 6px; cursor: pointer;
-  transition: background 0.15s;
-}
-.km-upload-retry-btn:hover { background: rgba(239,68,68,0.08); }
-
-/* ── Drop zone ── */
-.km-dropzone {
-  border: 2px dashed var(--km-border-h);
-  border-radius: 10px; padding: 20px 16px;
-  cursor: pointer; text-align: center;
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-  color: var(--km-muted); font-size: 12.5px;
-  background: var(--km-surface);
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
-  outline: none;
-}
-.km-dropzone:hover, .km-dropzone:focus-visible {
-  border-color: #6768EE; background: rgba(103,104,238,0.04);
-  box-shadow: 0 0 0 3px rgba(103,104,238,0.08);
-  color: #6768EE;
-}
-.km-dropzone--drag {
-  border-color: #6768EE; border-style: solid;
-  background: rgba(103,104,238,0.07);
-  box-shadow: 0 0 0 3px rgba(103,104,238,0.12);
-  color: #6768EE;
-}
-.km-drop-hint { font-size: 10.5px; color: var(--km-subtle); }
-
-/* ── Empty / error ── */
-.km-col-empty {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 7px;
-  padding: 2rem 1rem; text-align: center;
-  color: var(--km-subtle); font-size: 12.5px;
-  flex: 1;
-}
-
-.km-error-state {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 3rem 1rem; text-align: center; color: #ef4444; font-size: 13px;
-}
-.km-error-state p { margin: 0; }
-
-.km-retry-btn {
-  height: 30px; padding: 0 16px; border-radius: 8px;
-  border: 1px solid rgba(239,68,68,0.22); background: transparent;
-  color: #ef4444; font-size: 12px; font-weight: 500;
-  font-family: 'Inter', system-ui, sans-serif;
-  cursor: pointer; margin-top: 4px; transition: background 0.15s;
-}
-.km-retry-btn:hover { background: rgba(239,68,68,0.08); }
-
-/* ── Skeletons ── */
-.km-skel-thumb {
-  aspect-ratio: 16 / 9; border-radius: 9px;
-  background: var(--km-surface);
-  animation: km-shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes km-shimmer { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-@keyframes km-spin    { to { transform: rotate(360deg); } }
-.km-spin { animation: km-spin 0.75s linear infinite; display: inline-block; }
-
-/* ── Mobile ── */
-@media (max-width: 640px) {
-  .km-two-col {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1px auto;
-  }
-  .km-col-divider { align-self: auto; width: auto; height: 1px; }
-}
-
-/* ── Scrollbar ── */
-.km-col-body::-webkit-scrollbar { width: 3px; }
-.km-col-body::-webkit-scrollbar-track { background: transparent; }
-.km-col-body::-webkit-scrollbar-thumb { background: rgba(103,104,238,0.18); border-radius: 99px; }
+  .photo-thumb:hover .photo-overlay   { opacity: 1 !important; }
+  .finish-thumb:hover .finish-overlay { opacity: 1 !important; }
+  .finish-thumb:hover .finish-actions { opacity: 1 !important; }
 `

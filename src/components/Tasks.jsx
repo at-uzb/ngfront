@@ -20,15 +20,14 @@ const TIMELINE_OPTIONS = [
   { id: 'past',          label: "Muddati o'tgan" },
 ]
 
-// Status values must match Django KT.Status choices exactly
 const STATUS = {
-  ALL:       null,
-  UPCOMING:  'kutilmoqda',
-  OVERDUE:   '__overdue__',   // pseudo-status, handled via deadline__lt filter on backend
-  DONE:      'bajarildi',
+  ALL:      null,
+  UPCOMING: 'kutilmoqda',
+  OVERDUE:  '__overdue__',
+  DONE:     'bajarildi',
 }
 
-// ── Utils (move to src/utils/date.js in your project) ─────────────────────────
+// ── Utils ──────────────────────────────────────────────────────────────────────
 
 export const fmtDate = (iso) =>
   iso
@@ -56,7 +55,6 @@ export default function Tasks() {
   const navigate                    = useNavigate()
   const { selectedGroup }           = useGroupStore()
 
-  // All filters live here — all sent to server, nothing filtered client-side
   const [tasks,         setTasks]         = useState([])
   const [stats,         setStats]         = useState({})
   const [loading,       setLoading]       = useState(true)
@@ -67,8 +65,6 @@ export default function Tasks() {
   const [exportLoading, setExportLoading] = useState(false)
 
   const searchRef = useRef(null)
-
-  // canAdd comes from backend via user object — ADD_TASK_GROUPS removed
   const canAdd = isAdmin || isTasker || user?.can_add_tasks
 
   // ── Export ─────────────────────────────────────────────────────────────────
@@ -96,7 +92,7 @@ export default function Tasks() {
     }
   }, [selectedGroup, timeline])
 
-  // ── Fetch — ALL filtering is server-side ───────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchTasks = useCallback(async () => {
     setLoading(true)
@@ -108,15 +104,9 @@ export default function Tasks() {
       if (query)                        params.set('search',   query)
       if (timeline)                     params.set('timeline', timeline)
 
-      // Status filter — all goes to server
-      if (statusFilter === STATUS.DONE) {
-        params.set('status', 'bajarildi')
-      } else if (statusFilter === STATUS.OVERDUE) {
-        params.set('overdue', 'true')
-      } else if (statusFilter === STATUS.UPCOMING) {
-        params.set('upcoming', 'true')
-      }
-      // STATUS.ALL → no extra param, backend returns all active tasks
+      if (statusFilter === STATUS.DONE)     params.set('status',   'bajarildi')
+      else if (statusFilter === STATUS.OVERDUE)  params.set('overdue',  'true')
+      else if (statusFilter === STATUS.UPCOMING) params.set('upcoming', 'true')
 
       const { data } = await api.get(`/tasks/kts/?${params}`)
       const payload  = data.results ?? data
@@ -135,33 +125,27 @@ export default function Tasks() {
     return () => clearTimeout(timer)
   }, [fetchTasks, selectedGroup])
 
-  // Reset status filter when group or timeline changes
   useEffect(() => {
     setStatusFilter(STATUS.ALL)
   }, [selectedGroup?.id, timeline])
 
-  // ── Delete — optimistic with full stats update ─────────────────────────────
+  // ── Delete ─────────────────────────────────────────────────────────────────
 
   const deleteTask = useCallback(async (id, e) => {
     e.stopPropagation()
     if (!window.confirm("Topshiriqni o'chirishni tasdiqlaysizmi?")) return
 
-    // Snapshot before removal so we can update stats accurately
     const removed = tasks.find(t => t.id === id)
     if (!removed) return
 
     setTasks(prev => prev.filter(t => t.id !== id))
-
-    // Update every affected stat counter atomically
     setStats(prev => {
       const next = { ...prev, total: Math.max(0, (prev.total ?? 0) - 1) }
       if (removed.is_overdue) {
         next.overdue = Math.max(0, (prev.overdue ?? 0) - 1)
       } else if (removed.deadline) {
         next.upcoming = Math.max(0, (prev.upcoming ?? 0) - 1)
-        if (removed.is_due_soon) {
-          next.due_today = Math.max(0, (prev.due_today ?? 0) - 1)
-        }
+        if (removed.is_due_soon) next.due_today = Math.max(0, (prev.due_today ?? 0) - 1)
       }
       return next
     })
@@ -169,18 +153,17 @@ export default function Tasks() {
     try {
       await api.delete(`/tasks/kts/${id}/`)
     } catch {
-      // Rollback on failure
       fetchTasks()
     }
   }, [tasks, fetchTasks])
 
-  // ── Stat card click — toggle filter, send to server ───────────────────────
+  // ── Stat card click ────────────────────────────────────────────────────────
 
   const handleStatClick = useCallback((key) => {
     setStatusFilter(prev => prev === key ? STATUS.ALL : key)
   }, [])
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
 
   const total    = stats.total     ?? 0
   const upcoming = stats.upcoming  ?? 0
@@ -190,248 +173,176 @@ export default function Tasks() {
 
   const activeTimelineLabel = TIMELINE_OPTIONS.find(t => t.id === timeline)?.label
 
-  // Tasks come pre-bucketed from server — just split by is_overdue / deadline
   const upcomingTasks   = tasks.filter(t => !t.is_overdue &&  t.deadline)
   const overdueTasks    = tasks.filter(t =>  t.is_overdue)
   const noDeadlineTasks = tasks.filter(t => !t.deadline && !t.is_overdue)
-  // Done tasks have is_overdue=false naturally since status=bajarildi
-  // When statusFilter===DONE, all tasks land in upcomingTasks or noDeadlineTasks
-  // We handle that by showing them under a single "Bajarilgan" section instead
-  const doneTasks = statusFilter === STATUS.DONE ? tasks : []
+  const doneTasks       = statusFilter === STATUS.DONE ? tasks : []
+
+  const statCards = [
+    { key: STATUS.ALL,      label: 'Jami',            value: total,    icon: Calendar,      mod: ''                          },
+    { key: STATUS.UPCOMING, label: 'Kutilmoqda',       value: upcoming, icon: Clock,         mod: 'blue', sub: dueToday > 0 ? `${dueToday} bugun` : null },
+    { key: STATUS.OVERDUE,  label: "Muddati o'tgan",  value: overdue,  icon: AlertTriangle, mod: overdue > 0 ? 'urgent' : '' },
+    { key: STATUS.DONE,     label: 'Bajarilgan',       value: done,     icon: Inbox,         mod: 'green'                     },
+  ]
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const statCards = [
-    {
-      key:   STATUS.ALL,
-      label: 'Jami',
-      value: total,
-      icon:  Calendar,
-      mod:   '',
-    },
-    {
-      key:   STATUS.UPCOMING,
-      label: 'Kutilmoqda',
-      value: upcoming,
-      icon:  Clock,
-      mod:   'blue',
-      sub:   dueToday > 0 ? `${dueToday} bugun` : null,
-    },
-    {
-      key:   STATUS.OVERDUE,
-      label: "Muddati o'tgan",
-      value: overdue,
-      icon:  AlertTriangle,
-      mod:   overdue > 0 ? 'urgent' : '',
-    },
-    {
-      key:   STATUS.DONE,
-      label: 'Bajarilgan',
-      value: done,
-      icon:  Inbox,
-      mod:   'green',
-    },
-  ]
-
   return (
-  <>
-    <style>{CSS}</style>
-    <div className="topshiriqlar">
+    <>
+      <style>{CSS}</style>
+      <div className="topshiriqlar">
 
-      {/* ── Filter bar ── */}
-      <div className="df-wrap">
-        <div className="df-row">
-          <GroupSelector />
-          <div className="t-filter-actions">
-            {isAdmin && (
-              <button
-                className="t-add-btn"
-                onClick={handleExport}
-                disabled={exportLoading}
-                title="Excel yuklash"
-              >
-                {exportLoading
-                  ? <Loader2 size={13} strokeWidth={2} className="t-spin" />
-                  : <FileSpreadsheet size={13} strokeWidth={2} />
-                }
-                <span className="t-btn-lbl">{exportLoading ? '...' : 'Yuklash'}</span>
-              </button>
-            )}
-            {canAdd && (
-              <button
-                className="t-add-btn primary"
-                onClick={() => navigate('/task/create/')}
-                title="Topshiriq qo'shish"
-              >
-                <Plus size={13} strokeWidth={2.5} />
-                <span className="t-btn-lbl">Qo'shish</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="df-divider" />
-
-        <div className="df-row">
-          <div className="df-period-tabs">
-            {TIMELINE_OPTIONS.map(opt => (
-              <button
-                key={opt.id}
-                className={`df-tab${timeline === opt.id ? ' active' : ''}`}
-                onClick={() => setTimeline(opt.id)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Stat cards ── */}
-      <div className="t-stats">
-        {statCards.map(({ key, label, value, icon: Icon, mod, sub }) => (
-          <div
-            key={String(key)}
-            className={[
-              't-stat',
-              mod,
-              statusFilter === key && key !== STATUS.ALL ? 'active' : '',
-            ].filter(Boolean).join(' ')}
-            onClick={() => handleStatClick(key)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && handleStatClick(key)}
-            aria-pressed={statusFilter === key}
-          >
-            <Icon size={12} strokeWidth={1.8} className="t-stat-ico" />
-            <div className="t-stat-lbl">{label}</div>
-            <div className="t-stat-val">
-              {loading ? <span className="t-stat-skel" /> : value}
+        {/* Filter bar */}
+        <div className="df-wrap">
+          <div className="df-row">
+            <GroupSelector />
+            <div className="t-filter-actions">
+              {isAdmin && (
+                <button className="t-add-btn" onClick={handleExport} disabled={exportLoading} title="Excel yuklash">
+                  {exportLoading
+                    ? <Loader2 size={13} strokeWidth={2} className="t-spin" />
+                    : <FileSpreadsheet size={13} strokeWidth={2} />}
+                  <span className="t-btn-lbl">{exportLoading ? '...' : 'Yuklash'}</span>
+                </button>
+              )}
+              {canAdd && (
+                <button className="t-add-btn primary" onClick={() => navigate('/task/create/')} title="Topshiriq qo'shish">
+                  <Plus size={13} strokeWidth={2.5} />
+                  <span className="t-btn-lbl">Qo'shish</span>
+                </button>
+              )}
             </div>
-            {sub && !loading && <div className="t-stat-sub">{sub}</div>}
           </div>
-        ))}
-      </div>
 
-      {/* ── Group breakdown ── */}
-      {stats.by_group && Object.keys(stats.by_group).length > 0 && (
-        <GroupBreakdown data={stats.by_group} />
-      )}
+          <div className="df-divider" />
 
-      {/* ── Toolbar ── */}
-      <div className="t-toolbar">
-        <div className="t-search-wrap">
-          <Search size={13} strokeWidth={1.8} className="t-search-icon" />
-          <input
-            ref={searchRef}
-            className="t-search"
-            type="text"
-            placeholder="Topshiriq nomi, guruh yoki ijrochi..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
-          {query && (
-            <button
-              className="t-search-clear"
-              onClick={() => { setQuery(''); searchRef.current?.focus() }}
-              aria-label="Tozalash"
+          <div className="df-row">
+            <div className="df-period-tabs">
+              {TIMELINE_OPTIONS.map(opt => (
+                <button
+                  key={opt.id}
+                  className={`df-tab${timeline === opt.id ? ' active' : ''}`}
+                  onClick={() => setTimeline(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Stat cards */}
+        <div className="t-stats">
+          {statCards.map(({ key, label, value, icon: Icon, mod, sub }) => (
+            <div
+              key={String(key)}
+              className={['t-stat', mod, statusFilter === key && key !== STATUS.ALL ? 'active' : ''].filter(Boolean).join(' ')}
+              onClick={() => handleStatClick(key)}
+              role="button" tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && handleStatClick(key)}
+              aria-pressed={statusFilter === key}
             >
-              <X size={10} />
-            </button>
-          )}
+              <Icon size={12} strokeWidth={1.8} className="t-stat-ico" />
+              <div className="t-stat-lbl">{label}</div>
+              <div className="t-stat-val">
+                {loading ? <span className="t-stat-skel" /> : value}
+              </div>
+              {sub && !loading && <div className="t-stat-sub">{sub}</div>}
+            </div>
+          ))}
         </div>
-        <div className="t-pills">
-          {timeline && (
-            <button className="t-active-pill" onClick={() => setTimeline('')}>
-              <Calendar size={10} strokeWidth={2} />
-              {activeTimelineLabel}
-              <X size={9} />
-            </button>
-          )}
-          {statusFilter && statusFilter !== STATUS.ALL && (
-            <button className="t-active-pill" onClick={() => setStatusFilter(STATUS.ALL)}>
-              <X size={9} />
-              {statCards.find(s => s.key === statusFilter)?.label}
-            </button>
-          )}
-        </div>
-      </div>
 
-      {/* ── Task list ── */}
-      <div className="t-sections">
-        {loading ? (
-          <div className="t-empty">
-            <Loader2 size={17} strokeWidth={1.5} className="t-spin" />
-          </div>
-        ) : error ? (
-          <div className="t-empty t-error">
-            <AlertTriangle size={15} strokeWidth={1.5} />
-            <p>{error}</p>
-            <button className="t-retry-btn" onClick={fetchTasks}>Qayta urinish</button>
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="t-empty">
-            <CheckCircle2 size={20} strokeWidth={1.2} />
-            <p>Topshiriqlar topilmadi</p>
-          </div>
-        ) : statusFilter === STATUS.DONE ? (
-          // Done tasks — shown as a single flat section
-          <Section title="Bajarilgan" count={doneTasks.length} variant="done">
-            {doneTasks.map(t => (
-              <TaskCard
-                key={t.id}
-                task={t}
-                onDelete={deleteTask}
-                onClick={() => navigate(`/tasks/${t.id}`)}
-              />
-            ))}
-          </Section>
-        ) : (
-          <>
-            {upcomingTasks.length > 0 && (
-              <Section title="Faol" count={upcomingTasks.length}>
-                {upcomingTasks.map(t => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onDelete={deleteTask}
-                    onClick={() => navigate(`/tasks/${t.id}`)}
-                  />
-                ))}
-              </Section>
-            )}
-            {overdueTasks.length > 0 && (
-              <Section title="Muddati o'tgan" count={overdueTasks.length} variant="overdue">
-                {overdueTasks.map(t => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onDelete={deleteTask}
-                    onClick={() => navigate(`/tasks/${t.id}`)}
-                  />
-                ))}
-              </Section>
-            )}
-            {noDeadlineTasks.length > 0 && (
-              <Section title="Muddatsiz" count={noDeadlineTasks.length} variant="muted">
-                {noDeadlineTasks.map(t => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onDelete={deleteTask}
-                    onClick={() => navigate(`/tasks/${t.id}`)}
-                  />
-                ))}
-              </Section>
-            )}
-          </>
+        {/* Group breakdown */}
+        {stats.by_group && Object.keys(stats.by_group).length > 0 && (
+          <GroupBreakdown data={stats.by_group} />
         )}
+
+        {/* Toolbar */}
+        <div className="t-toolbar">
+          <div className="t-search-wrap">
+            <Search size={13} strokeWidth={1.8} className="t-search-icon" />
+            <input
+              ref={searchRef}
+              className="t-search"
+              type="text"
+              placeholder="Topshiriq nomi, guruh yoki ijrochi..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+            {query && (
+              <button className="t-search-clear" onClick={() => { setQuery(''); searchRef.current?.focus() }} aria-label="Tozalash">
+                <X size={10} />
+              </button>
+            )}
+          </div>
+          <div className="t-pills">
+            {timeline && (
+              <button className="t-active-pill" onClick={() => setTimeline('')}>
+                <Calendar size={10} strokeWidth={2} />
+                {activeTimelineLabel}
+                <X size={9} />
+              </button>
+            )}
+            {statusFilter && statusFilter !== STATUS.ALL && (
+              <button className="t-active-pill" onClick={() => setStatusFilter(STATUS.ALL)}>
+                <X size={9} />
+                {statCards.find(s => s.key === statusFilter)?.label}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Task list */}
+        <div className="t-sections">
+          {loading ? (
+            <div className="t-empty"><Loader2 size={17} strokeWidth={1.5} className="t-spin" /></div>
+          ) : error ? (
+            <div className="t-empty t-error">
+              <AlertTriangle size={15} strokeWidth={1.5} />
+              <p>{error}</p>
+              <button className="t-retry-btn" onClick={fetchTasks}>Qayta urinish</button>
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="t-empty">
+              <CheckCircle2 size={20} strokeWidth={1.2} />
+              <p>Topshiriqlar topilmadi</p>
+            </div>
+          ) : statusFilter === STATUS.DONE ? (
+            <Section title="Bajarilgan" count={doneTasks.length} variant="done">
+              {doneTasks.map(t => (
+                <TaskCard key={t.id} task={t} onDelete={deleteTask} onClick={() => navigate(`/tasks/${t.id}`)} />
+              ))}
+            </Section>
+          ) : (
+            <>
+              {upcomingTasks.length > 0 && (
+                <Section title="Faol" count={upcomingTasks.length}>
+                  {upcomingTasks.map(t => (
+                    <TaskCard key={t.id} task={t} onDelete={deleteTask} onClick={() => navigate(`/tasks/${t.id}`)} />
+                  ))}
+                </Section>
+              )}
+              {overdueTasks.length > 0 && (
+                <Section title="Muddati o'tgan" count={overdueTasks.length} variant="overdue">
+                  {overdueTasks.map(t => (
+                    <TaskCard key={t.id} task={t} onDelete={deleteTask} onClick={() => navigate(`/tasks/${t.id}`)} />
+                  ))}
+                </Section>
+              )}
+              {noDeadlineTasks.length > 0 && (
+                <Section title="Muddatsiz" count={noDeadlineTasks.length} variant="muted">
+                  {noDeadlineTasks.map(t => (
+                    <TaskCard key={t.id} task={t} onDelete={deleteTask} onClick={() => navigate(`/tasks/${t.id}`)} />
+                  ))}
+                </Section>
+              )}
+            </>
+          )}
+        </div>
+
       </div>
-
-    </div>
-  </>
+    </>
   )
-
 }
 
 // ── GroupBreakdown ─────────────────────────────────────────────────────────────
@@ -496,24 +407,20 @@ function TaskCard({ task, onDelete, onClick }) {
   const isTodayDl = isSameDay(task.deadline, 0)
   const isTomorDl = isSameDay(task.deadline, 1)
 
-  const dlLabel = isOverdue  ? `⚠ ${fmtDate(task.deadline)}`
-                : isTodayDl  ? 'Bugun'
-                : isTomorDl  ? 'Ertaga'
+  const dlLabel = isOverdue ? `⚠ ${fmtDate(task.deadline)}`
+                : isTodayDl ? 'Bugun'
+                : isTomorDl ? 'Ertaga'
                 : fmtDate(task.deadline)
 
-  const dlMod = isOverdue ? 'over'
-              : isTodayDl ? 'today'
-              : isTomorDl ? 'tmrw'
-              : ''
+  const dlMod = isOverdue ? 'over' : isTodayDl ? 'today' : isTomorDl ? 'tmrw' : ''
+
+  // CHANGED: was  task.group_name  (string)
+  // Now         task.group_names  (array) — render one tag per group
+  const groupNames = task.group_names ?? []
 
   return (
     <div
-      className={[
-        't-task',
-        isOverdue        ? 'overdue' : '',
-        isDone           ? 'done'    : '',
-        task.is_due_soon ? 'soon'    : '',
-      ].filter(Boolean).join(' ')}
+      className={['t-task', isOverdue ? 'overdue' : '', isDone ? 'done' : '', task.is_due_soon ? 'soon' : ''].filter(Boolean).join(' ')}
       onClick={onClick}
     >
       <div className="t-task-bar" />
@@ -521,12 +428,15 @@ function TaskCard({ task, onDelete, onClick }) {
       <div className="t-tbody">
         <div className="t-tname">{task.name}</div>
         <div className="t-tmeta">
-          {task.group_name && (
-            <span className="t-tag t-tag-group">{task.group_name}</span>
-          )}
-          {isDone && (
-            <span className="t-tag t-tag-done">Bajarildi</span>
-          )}
+
+          {/* CHANGED: was  task.group_name && <span>...</span>
+              Now renders one tag per group — handles 1, 2, or 3 groups naturally */}
+          {groupNames.map(name => (
+            <span key={name} className="t-tag t-tag-group">{name}</span>
+          ))}
+
+          {isDone && <span className="t-tag t-tag-done">Bajarildi</span>}
+
           {task.deadline ? (
             <span className={`t-tag t-tag-dl${dlMod ? ` ${dlMod}` : ''}`}>
               <Calendar size={9} strokeWidth={2} />
@@ -535,6 +445,7 @@ function TaskCard({ task, onDelete, onClick }) {
           ) : (
             !isDone && <span className="t-tag t-tag-none">Muddatsiz</span>
           )}
+
           {task.is_due_soon && !isOverdue && !isDone && (
             <span className="t-tag t-tag-soon">Tez orada</span>
           )}
@@ -543,11 +454,7 @@ function TaskCard({ task, onDelete, onClick }) {
 
       {onDelete && (
         <div className="t-actions">
-          <button
-            className="t-act-btn del"
-            onClick={e => onDelete(task.id, e)}
-            title="O'chirish"
-          >
+          <button className="t-act-btn del" onClick={e => onDelete(task.id, e)} title="O'chirish">
             <X size={11} strokeWidth={2} />
           </button>
         </div>

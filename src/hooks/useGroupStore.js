@@ -3,7 +3,6 @@ import api from '../lib/api'
 
 const STORAGE_KEY = 'selectedGroupId'
 
-// Sentinel entry that represents "all groups"
 export const ALL_GROUP = {
   id:          'ALL',
   short_name:  'ALL',
@@ -12,10 +11,9 @@ export const ALL_GROUP = {
   admin_count: null,
 }
 
-// Module-level subscribers so all hook instances share one state
 let _groups = []
 let _selectedId = 'ALL'
-let _loading = true
+let _loading = false
 let _error = null
 let _fetched = false
 const _listeners = new Set()
@@ -27,17 +25,18 @@ function notify() {
 async function fetchGroups() {
   if (_fetched) return
   _fetched = true
+  _loading = true
+  _error = null
+  notify()
 
   try {
     const res = await api.get('/groups/list/')
     const results = res.data.results ?? []
 
     if (results.length === 1) {
-      // Single group: skip ALL_GROUP, auto-select the only group
       _groups = results
       _selectedId = results[0].id
     } else {
-      // Multiple groups: prepend ALL_GROUP and restore last selection
       _groups = [ALL_GROUP, ...results]
       const stored = localStorage.getItem(STORAGE_KEY)
       const valid = _groups.find((g) => String(g.id) === String(stored))
@@ -46,6 +45,9 @@ async function fetchGroups() {
 
     _loading = false
   } catch (err) {
+    if (err.response?.status === 401) {
+      _fetched = false // allow retry after re-login
+    }
     _error = err.response?.data?.detail || err.message
     _loading = false
   }
@@ -53,7 +55,16 @@ async function fetchGroups() {
   notify()
 }
 
-fetchGroups()
+// Call this once after login sets the token on your api instance
+export function initGroupStore() {
+  _fetched = false
+  _groups = []
+  _selectedId = 'ALL'
+  _loading = false
+  _error = null
+  notify()
+  fetchGroups()
+}
 
 export function useGroupStore() {
   const [, rerender] = useState(0)
@@ -61,6 +72,12 @@ export function useGroupStore() {
   useEffect(() => {
     const update = () => rerender((n) => n + 1)
     _listeners.add(update)
+
+    // If not yet fetched (first mount after login), kick off fetch
+    if (!_fetched) {
+      fetchGroups()
+    }
+
     return () => _listeners.delete(update)
   }, [])
 
