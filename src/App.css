@@ -195,7 +195,10 @@ body {
   padding: 60px 0 10px 0;
   overflow: hidden;
 }
-
+.content-area:has(> .kt-finn) {
+  padding: 50px 0 10px 0;
+  overflow: hidden;
+}
 /* ── Page container ──────────────────────────────────────── */
 .page-container {
   background: var(--bg-card);

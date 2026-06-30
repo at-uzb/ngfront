@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload, X, FileImage, Calendar, AlignLeft, Tag, Users } from 'lucide-react'
+import { Upload, X, FileImage, Calendar, AlignLeft, Tag, Users, Check } from 'lucide-react'
 import api from '../lib/api'
 import { useGroupStore } from '../hooks/useGroupStore'
 
@@ -20,11 +20,13 @@ const deadlineFor = (priorityId) => {
 export default function TaskCreate() {
   const navigate     = useNavigate()
   const fileInputRef = useRef(null)
-  const { groups, selectedId, setSelectedId } = useGroupStore()
+  const { groups }   = useGroupStore()   // CHANGED: no longer need selectedId/setSelectedId
 
   const [form, setForm] = useState({
     name: '', priority: 'past', deadline: '', description: '',
   })
+  // CHANGED: was  selectedId (single number)  →  selectedGroupIds (Set of numbers)
+  const [selectedGroupIds, setSelectedGroupIds] = useState(new Set())
   const [mediaFiles,  setMediaFiles]  = useState([])
   const [error,       setError]       = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
@@ -32,7 +34,6 @@ export default function TaskCreate() {
   const [dragOver,    setDragOver]    = useState(false)
   const [msg,         setMsg]         = useState(null)
 
-  // Set initial deadline on mount based on default priority
   useEffect(() => {
     setForm(f => ({ ...f, deadline: deadlineFor('past') }))
   }, [])
@@ -40,9 +41,7 @@ export default function TaskCreate() {
   const patch = (k, v) => {
     setForm(f => {
       const next = { ...f, [k]: v }
-      if (k === 'priority') {
-        next.deadline = deadlineFor(v)
-      }
+      if (k === 'priority') next.deadline = deadlineFor(v)
       return next
     })
     setFieldErrors(fe => ({ ...fe, [k]: '' }))
@@ -53,14 +52,25 @@ export default function TaskCreate() {
     setTimeout(() => setMsg(null), 3500)
   }
 
-  // ── Files ────────────────────────────────────────────────
+  // CHANGED: toggle a group in/out of the selected Set
+  const toggleGroup = (id) => {
+    setSelectedGroupIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+    setFieldErrors(fe => ({ ...fe, group_ids: '' }))
+  }
+
+  // ── Files ─────────────────────────────────────────────────────────────────
+
   const addFiles = useCallback((files) => {
     const next = Array.from(files)
       .filter(f => f.type.startsWith('image/'))
       .map(file => ({
-        id: Math.random().toString(36).slice(2),
+        id:          Math.random().toString(36).slice(2),
         file,
-        preview: URL.createObjectURL(file),
+        preview:     URL.createObjectURL(file),
         description: '',
       }))
     setMediaFiles(prev => [...prev, ...next])
@@ -83,17 +93,20 @@ export default function TaskCreate() {
     addFiles(e.dataTransfer.files)
   }
 
-  // ── Validate ─────────────────────────────────────────────
+  // ── Validate ──────────────────────────────────────────────────────────────
+
   const validate = () => {
     const errs = {}
-    if (!form.name.trim())        errs.name        = 'Nom kiritilishi shart'
-    if (!form.description.trim()) errs.description = 'Tavsif kiritilishi shart'
-    if (!selectedId)              errs.group_id    = "Bo'lim tanlanishi shart"
+    if (!form.name.trim())           errs.name        = 'Nom kiritilishi shart'
+    if (!form.description.trim())    errs.description = 'Tavsif kiritilishi shart'
+    // CHANGED: was  !selectedId  →  no group selected at all
+    if (selectedGroupIds.size === 0) errs.group_ids   = "Kamida bitta bo'lim tanlanishi shart"
     setFieldErrors(errs)
     return Object.keys(errs).length === 0
   }
 
-  // ── Submit ───────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
+
   const handleSave = async () => {
     if (!validate()) return
     setSaving(true)
@@ -101,17 +114,20 @@ export default function TaskCreate() {
     try {
       const fd = new FormData()
       fd.append('name',        form.name.trim())
-      fd.append('group_id',    selectedId)
       fd.append('priority',    form.priority)
       fd.append('description', form.description.trim())
       if (form.deadline) {
-        const dt = new Date(form.deadline)
-        fd.append('deadline', dt.toISOString().split('.')[0] + 'Z')
+        fd.append('deadline', new Date(form.deadline).toISOString().split('.')[0] + 'Z')
       }
+      // CHANGED: was  fd.append('group_id', selectedId)
+      // Now appends every selected group id as  group_ids  (backend reads getlist('group_ids'))
+      selectedGroupIds.forEach(id => fd.append('group_ids', id))
+
       mediaFiles.forEach(({ file, description }) => {
         fd.append('media_files',  file)
         fd.append('descriptions', description || '')
       })
+
       const response = await api.post('/tasks/create/', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
@@ -136,7 +152,7 @@ export default function TaskCreate() {
       <style>{CSS}</style>
       <div className="tc2">
 
-        {/* ── Cover ── */}
+        {/* Cover */}
         <div className="tc2-cover">
           <button className="tc2-back" onClick={() => navigate(-1)} type="button">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -144,7 +160,6 @@ export default function TaskCreate() {
               <polyline points="15 18 9 12 15 6"/>
             </svg>
           </button>
-
           <div className="tc2-cover-center">
             <div className="tc2-cover-icon">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
@@ -160,11 +175,10 @@ export default function TaskCreate() {
           </div>
         </div>
 
-        {/* ── Sheet ── */}
+        {/* Sheet */}
         <div className="tc2-sheet">
           <div className="tc2-handle" />
 
-          {/* Flash */}
           {msg && (
             <div className={`tc2-flash tc2-flash--${msg.type}`} role="alert">
               {msg.type === 'success'
@@ -197,25 +211,41 @@ export default function TaskCreate() {
               </div>
             </div>
 
-            {/* Group */}
-            <div className="tc2-row">
-              <div className="tc2-row-left">
+            {/* CHANGED: Group — was a single <select>, now a tap-to-toggle chip list */}
+            <div className="tc2-row tc2-row--groups">
+              <div className="tc2-row-left tc2-row-left--top">
                 <span className="tc2-row-icon"><Users size={15} strokeWidth={2} /></span>
-                <span className="tc2-row-label">Bo'lim <span className="tc2-req">*</span></span>
+                <span className="tc2-row-label">
+                  Bo'lim <span className="tc2-req">*</span>
+                </span>
               </div>
               <div className="tc2-row-input">
-                <select
-                  className={fieldErrors.group_id ? 'err' : ''}
-                  value={selectedId ?? ''}
-                  onChange={e => { setSelectedId(Number(e.target.value)); setFieldErrors(fe => ({ ...fe, group_id: '' })) }}
-                  disabled={saving}
-                >
-                  <option value="">— Tanlang —</option>
-                  {groups.map(g => (
-                    <option key={g.id} value={g.id}>{g.short_name} — {g.name}</option>
-                  ))}
-                </select>
-                {fieldErrors.group_id && <span className="tc2-ferr">{fieldErrors.group_id}</span>}
+                <div className="tc2-group-chips">
+                  {groups.map(g => {
+                    const active = selectedGroupIds.has(g.id)
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={`tc2-group-chip${active ? ' sel' : ''}`}
+                        onClick={() => toggleGroup(g.id)}
+                        disabled={saving}
+                      >
+                        {active && <Check size={10} strokeWidth={3} className="tc2-group-check" />}
+                        <span className="tc2-group-short">{g.short_name}</span>
+                        <span className="tc2-group-name">{g.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {selectedGroupIds.size > 0 && (
+                  <p className="tc2-group-hint">
+                    {selectedGroupIds.size} ta bo'lim tanlandi
+                  </p>
+                )}
+                {fieldErrors.group_ids && (
+                  <span className="tc2-ferr">{fieldErrors.group_ids}</span>
+                )}
               </div>
             </div>
 
@@ -388,47 +418,30 @@ const CSS = `
   background: rgba(255,255,255,0.18);
   border: none;
   color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   transition: background 0.15s;
 }
 .tc2-back:hover { background: rgba(255,255,255,0.3); }
 
 .tc2-cover-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
   margin-top: 0.5rem;
 }
 
 .tc2-cover-icon {
-  width: 72px; height: 72px;
-  border-radius: 50%;
+  width: 72px; height: 72px; border-radius: 50%;
   background: rgba(255,255,255,0.2);
   border: 3px solid rgba(255,255,255,0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  margin-bottom: 0.4rem;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; margin-bottom: 0.4rem;
 }
 
 .tc2-cover-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #fff;
-  margin: 0;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  font-size: 1.25rem; font-weight: 800; color: #fff;
+  margin: 0; text-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
-
-.tc2-cover-sub {
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.72);
-  margin: 0;
-}
+.tc2-cover-sub { font-size: 0.8rem; color: rgba(255,255,255,0.72); margin: 0; }
 
 /* ── Sheet ── */
 .tc2-sheet {
@@ -437,84 +450,60 @@ const CSS = `
   margin-top: -3rem;
   flex: 1;
   padding: 0 0 2.5rem;
-  display: flex;
-  flex-direction: column;
+  display: flex; flex-direction: column;
 }
-
 .dark .tc2-sheet { background: #1e2235; }
 
 .tc2-handle {
   width: 40px; height: 4px;
-  background: #ddd;
-  border-radius: 99px;
-  margin: 12px auto 18px;
-  flex-shrink: 0;
+  background: #ddd; border-radius: 99px;
+  margin: 12px auto 18px; flex-shrink: 0;
 }
 .dark .tc2-handle { background: rgba(120,130,255,0.2); }
 
 /* ── Flash ── */
 .tc2-flash {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  display: flex; align-items: center; gap: 0.5rem;
   margin: 0 1.25rem 0.75rem;
   padding: 0.75rem 1rem;
-  font-size: 0.84rem;
-  font-weight: 600;
+  font-size: 0.84rem; font-weight: 600;
   border-radius: 14px;
 }
-.tc2-flash--success { background: var(--accent-lt);  color: var(--accent-dk); }
-.tc2-flash--error   { background: var(--danger-lt);  color: var(--danger); }
-
-.dark .tc2-flash--success {
-  background: rgba(99,102,241,0.15);
-  color: #a5b4fc;
-}
+.tc2-flash--success { background: var(--accent-lt); color: var(--accent-dk); }
+.tc2-flash--error   { background: var(--danger-lt); color: var(--danger);    }
+.dark .tc2-flash--success { background: rgba(99,102,241,0.15); color: #a5b4fc; }
 
 /* ── Rows ── */
 .tc2-rows { display: flex; flex-direction: column; }
 
 .tc2-row {
-  display: flex;
-  align-items: center;
+  display: flex; align-items: center;
   padding: 0 1.25rem;
   min-height: 62px;
   border-bottom: 0.5px solid #ebebeb;
   gap: 0.75rem;
   transition: background 0.12s;
 }
-.tc2-row:last-child  { border-bottom: none; }
-.tc2-row--tall       { min-height: 68px; }
+.tc2-row:last-child    { border-bottom: none; }
+.tc2-row--tall         { min-height: 68px; }
 .tc2-row--desc,
-.tc2-row--media      { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
-
-.tc2-row:focus-within { background: rgba(99,102,241,0.04); }
-
-.dark .tc2-row        { border-bottom-color: rgba(120,130,255,0.1); }
+.tc2-row--media,
+.tc2-row--groups       { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+.tc2-row:focus-within  { background: rgba(99,102,241,0.04); }
+.dark .tc2-row         { border-bottom-color: rgba(120,130,255,0.1); }
 .dark .tc2-row:focus-within { background: rgba(99,102,241,0.07); }
 
 .tc2-row-left {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  width: 120px;
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 0.55rem;
+  width: 120px; flex-shrink: 0;
 }
 .tc2-row-left--top { align-items: flex-start; padding-top: 2px; }
 
-.tc2-row-icon {
-  display: flex;
-  align-items: center;
-  color: #aaa;
-  flex-shrink: 0;
-}
+.tc2-row-icon { display: flex; align-items: center; color: #aaa; flex-shrink: 0; }
 .dark .tc2-row-icon { color: #5a6890; }
 
 .tc2-row-label {
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: #333;
-  white-space: nowrap;
+  font-size: 0.86rem; font-weight: 600; color: #333; white-space: nowrap;
 }
 .dark .tc2-row-label { color: #e8eaf6; }
 
@@ -532,36 +521,28 @@ const CSS = `
   border-bottom: 1.5px solid #d8d8d8;
   border-radius: 0;
   outline: none;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.9rem; font-weight: 500;
   color: #222;
   font-family: inherit;
   text-align: right;
   padding: 0.3rem 0;
-  -webkit-appearance: none;
-  appearance: none;
+  -webkit-appearance: none; appearance: none;
   transition: border-color 0.15s;
   resize: none;
 }
-
 .tc2-sheet input::placeholder,
 .tc2-sheet textarea::placeholder { color: #bbb; }
-
 .tc2-sheet input:focus,
 .tc2-sheet select:focus,
-.tc2-sheet textarea:focus  { border-bottom-color: var(--accent); }
-
+.tc2-sheet textarea:focus { border-bottom-color: var(--accent); }
 .tc2-sheet input:disabled,
 .tc2-sheet select:disabled,
 .tc2-sheet textarea:disabled { opacity: 0.45; cursor: not-allowed; }
-
 .tc2-sheet input.err,
 .tc2-sheet select.err,
 .tc2-sheet textarea.err { border-bottom-color: var(--danger); }
-
 .tc2-sheet textarea {
-  text-align: left;
-  line-height: 1.55;
+  text-align: left; line-height: 1.55;
   border-bottom: none;
   border: 1.5px solid #d8d8d8;
   border-radius: 10px;
@@ -569,164 +550,160 @@ const CSS = `
 }
 .tc2-sheet textarea:focus { border-color: var(--accent); }
 
-/* Dark inputs */
 .dark .tc2-sheet input,
 .dark .tc2-sheet select,
-.dark .tc2-sheet textarea {
-  color: #e8eaf6;
-  border-bottom-color: rgba(120,130,255,0.2);
-}
+.dark .tc2-sheet textarea { color: #e8eaf6; border-bottom-color: rgba(120,130,255,0.2); }
 .dark .tc2-sheet input::placeholder,
 .dark .tc2-sheet textarea::placeholder { color: #3a4060; }
 .dark .tc2-sheet input:focus,
 .dark .tc2-sheet select:focus,
-.dark .tc2-sheet textarea:focus {
-  border-bottom-color: #818cf8;
-}
+.dark .tc2-sheet textarea:focus { border-bottom-color: #818cf8; }
 .dark .tc2-sheet textarea {
-  border-color: rgba(120,130,255,0.2);
-  background: rgba(120,130,255,0.04);
+  border-color: rgba(120,130,255,0.2); background: rgba(120,130,255,0.04);
 }
 .dark .tc2-sheet textarea:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+  border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
 }
 
 .tc2-ferr { font-size: 11px; color: var(--danger); }
 
 /* ── Priority chips ── */
-.tc2-chips {
-  flex-direction: row !important;
-  gap: 6px;
-  justify-content: flex-end;
-}
+.tc2-chips { flex-direction: row !important; gap: 6px; justify-content: flex-end; }
 
 .tc2-chip {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.75rem; font-weight: 700;
   font-family: inherit;
   padding: 0.2rem 0.75rem;
-  border-radius: 99px;
-  border: 1.5px solid;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s;
-  opacity: 0.55;
+  border-radius: 99px; border: 1.5px solid;
+  background: transparent; cursor: pointer;
+  transition: all 0.15s; opacity: 0.55;
 }
-.tc2-chip.sel    { opacity: 1; }
-.tc2-chip:hover  { opacity: 0.85; }
+.tc2-chip.sel   { opacity: 1; }
+.tc2-chip:hover { opacity: 0.85; }
 .tc2-chip:disabled { cursor: not-allowed; opacity: 0.3; }
+
+/* ── Group chips (NEW) ── */
+.tc2-group-chips {
+  display: flex; flex-direction: column; gap: 6px;
+  padding-top: 2px;
+}
+
+.tc2-group-chip {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #e0e0e0;
+  background: #fff;
+  cursor: pointer; text-align: left;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.tc2-group-chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-lt);
+}
+.tc2-group-chip.sel {
+  border-color: var(--accent);
+  background: var(--accent-lt);
+}
+.tc2-group-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.dark .tc2-group-chip {
+  background: rgba(120,130,255,0.05);
+  border-color: rgba(120,130,255,0.18);
+}
+.dark .tc2-group-chip:hover,
+.dark .tc2-group-chip.sel {
+  border-color: #818cf8;
+  background: rgba(99,102,241,0.12);
+}
+
+.tc2-group-check {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.tc2-group-short {
+  font-size: 0.78rem; font-weight: 800;
+  color: var(--accent);
+  background: var(--accent-lt);
+  padding: 1px 7px; border-radius: 6px;
+  flex-shrink: 0;
+}
+.dark .tc2-group-short {
+  background: rgba(99,102,241,0.15);
+  color: #a5b4fc;
+}
+
+.tc2-group-name {
+  font-size: 0.84rem; font-weight: 600;
+  color: #333; flex: 1;
+}
+.dark .tc2-group-name { color: #c7ccec; }
+
+.tc2-group-hint {
+  margin: 4px 0 0; font-size: 11px;
+  color: var(--accent); font-weight: 600;
+}
 
 /* ── Dropzone ── */
 .tc2-dropzone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
   padding: 20px 16px;
-  border: 1.5px dashed #d0d0d0;
-  border-radius: 12px;
-  cursor: pointer;
-  color: #aaa;
-  font-size: 0.82rem;
-  text-align: center;
+  border: 1.5px dashed #d0d0d0; border-radius: 12px;
+  cursor: pointer; color: #aaa;
+  font-size: 0.82rem; text-align: center;
   transition: all 0.15s;
 }
-.tc2-dropzone:hover,
-.tc2-dropzone.over {
-  border-color: var(--accent);
-  color: var(--accent-dk);
+.tc2-dropzone:hover, .tc2-dropzone.over {
+  border-color: var(--accent); color: var(--accent-dk);
   background: rgba(99,102,241,0.04);
 }
 .tc2-dropzone u { text-decoration-color: currentColor; }
-
-.dark .tc2-dropzone {
-  border-color: rgba(120,130,255,0.2);
-  color: #5a6890;
-}
-.dark .tc2-dropzone:hover,
-.dark .tc2-dropzone.over {
-  border-color: #818cf8;
-  color: #a5b4fc;
-  background: rgba(99,102,241,0.08);
+.dark .tc2-dropzone { border-color: rgba(120,130,255,0.2); color: #5a6890; }
+.dark .tc2-dropzone:hover, .dark .tc2-dropzone.over {
+  border-color: #818cf8; color: #a5b4fc; background: rgba(99,102,241,0.08);
 }
 
 /* ── Media grid ── */
 .tc2-media-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 8px;
-  margin-top: 8px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px; margin-top: 8px;
 }
-
 .tc2-media-card { display: flex; flex-direction: column; gap: 4px; }
 
 .tc2-media-img-wrap {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  aspect-ratio: 4/3;
-  background: #eee;
+  position: relative; border-radius: 8px; overflow: hidden;
+  aspect-ratio: 4/3; background: #eee;
   border: 0.5px solid #e0e0e0;
 }
-.dark .tc2-media-img-wrap {
-  background: #1a1e30;
-  border-color: rgba(120,130,255,0.15);
-}
-
+.dark .tc2-media-img-wrap { background: #1a1e30; border-color: rgba(120,130,255,0.15); }
 .tc2-media-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .tc2-media-del {
-  position: absolute;
-  top: 4px; right: 4px;
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.5);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  opacity: 0;
-  transition: opacity 0.15s;
-  padding: 0;
+  position: absolute; top: 4px; right: 4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); border: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #fff; opacity: 0; transition: opacity 0.15s; padding: 0;
 }
 .tc2-media-img-wrap:hover .tc2-media-del { opacity: 1; }
 
 .tc2-media-desc {
-  font-size: 11px !important;
-  padding: 4px 6px !important;
-  border: 1px solid #e0e0e0 !important;
-  border-radius: 6px !important;
-  text-align: left !important;
-  color: #555 !important;
-  background: transparent !important;
+  font-size: 11px !important; padding: 4px 6px !important;
+  border: 1px solid #e0e0e0 !important; border-radius: 6px !important;
+  text-align: left !important; color: #555 !important; background: transparent !important;
 }
-.dark .tc2-media-desc {
-  border-color: rgba(120,130,255,0.18) !important;
-  color: #9fa8c7 !important;
-}
-.tc2-media-desc:focus {
-  border-color: var(--accent) !important;
-  outline: none !important;
-}
+.dark .tc2-media-desc { border-color: rgba(120,130,255,0.18) !important; color: #9fa8c7 !important; }
+.tc2-media-desc:focus { border-color: var(--accent) !important; outline: none !important; }
 
 /* ── Save button ── */
 .tc2-save {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 1.25rem 1.25rem 0;
-  padding: 1rem;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  margin: 1.25rem 1.25rem 0; padding: 1rem;
   background: linear-gradient(145deg, var(--cover-from) 0%, var(--cover-to) 100%);
-  color: #fff;
-  border: none;
-  border-radius: 18px;
-  font-size: 0.95rem;
-  font-weight: 800;
-  font-family: inherit;
+  color: #fff; border: none; border-radius: 18px;
+  font-size: 0.95rem; font-weight: 800; font-family: inherit;
   cursor: pointer;
   text-shadow: 0 1px 2px rgba(0,0,0,0.15);
   box-shadow: 0 4px 16px rgba(99,102,241,0.35);
@@ -734,8 +711,7 @@ const CSS = `
 }
 .tc2-save:hover:not(:disabled)  { opacity: 0.88; }
 .tc2-save:active:not(:disabled) { transform: scale(0.985); }
-.tc2-save:disabled              { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
-
+.tc2-save:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 .dark .tc2-save {
   background: linear-gradient(145deg, #4c4faa 0%, #312e81 100%);
   box-shadow: 0 4px 16px rgba(49,46,129,0.5);
@@ -745,40 +721,26 @@ const CSS = `
 .tc2-spinner {
   width: 15px; height: 15px;
   border: 2.5px solid rgba(255,255,255,0.35);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: tc2-spin 0.65s linear infinite;
-  flex-shrink: 0;
+  border-top-color: #fff; border-radius: 50%;
+  animation: tc2-spin 0.65s linear infinite; flex-shrink: 0;
 }
 @keyframes tc2-spin { to { transform: rotate(360deg); } }
 
 /* ── Mobile ── */
 @media (max-width: 480px) {
   .tc2-cover { padding: 2.5rem 1rem 6rem; }
-
   .tc2-row {
-    flex-direction: column;
-    align-items: flex-start;
-    padding-top: 12px;
-    padding-bottom: 12px;
-    min-height: unset;
-    gap: 6px;
+    flex-direction: column; align-items: flex-start;
+    padding-top: 12px; padding-bottom: 12px;
+    min-height: unset; gap: 6px;
   }
-
   .tc2-row-left        { width: 100%; }
   .tc2-row-left--top   { padding-top: 0; }
   .tc2-row-input       { width: 100%; }
-
-  .tc2-chips { justify-content: flex-start !important; gap: 4px; }
-
+  .tc2-chips           { justify-content: flex-start !important; gap: 4px; }
   .tc2-sheet input,
   .tc2-sheet select,
-  .tc2-sheet textarea {
-    text-align: left;
-    font-size: 0.85rem;
-    width: 100%;
-  }
-
-  .tc2-row-label { font-size: 0.8rem; }
+  .tc2-sheet textarea  { text-align: left; font-size: 0.85rem; width: 100%; }
+  .tc2-row-label       { font-size: 0.8rem; }
 }
 `

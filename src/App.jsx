@@ -144,7 +144,7 @@ function App() {
               <Route path="task/create" element={<TaskCreate />} />
               <Route path="news/create" element={<NewsCreate />} />
               <Route path="news/:slug"  element={<NewsDetail />} />
-              <Route path="tasks/:id/finish" element={<KtFinishMedia />} />
+              <Route path="tasks/:id/finish-media" element={<KtFinishMedia />} />
             </Route>
           </Route>
         </Routes>

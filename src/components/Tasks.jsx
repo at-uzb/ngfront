@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Search, Plus, FileSpreadsheet, Loader2,
-  Clock, AlertTriangle, CheckCircle2, Calendar, Inbox, X, ChevronDown,
+  Clock, AlertTriangle, CheckCircle2, Calendar, Inbox, X,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -25,6 +25,13 @@ const STATUS = {
   UPCOMING: 'kutilmoqda',
   OVERDUE:  '__overdue__',
   DONE:     'bajarildi',
+}
+
+// Per-group status → colour mapping
+const GROUP_STATUS_COLOR = {
+  kutilmoqda: { dot: '#f59e0b', text: '#b45309', bg: '#fef3c7' },
+  jarayonda:  { dot: '#6366f1', text: '#4338ca', bg: '#ede9fe' },
+  bajarildi:  { dot: '#10b981', text: '#065f46', bg: '#d1fae5' },
 }
 
 // ── Utils ──────────────────────────────────────────────────────────────────────
@@ -65,7 +72,7 @@ export default function Tasks() {
   const [exportLoading, setExportLoading] = useState(false)
 
   const searchRef = useRef(null)
-  const canAdd = isAdmin || isTasker || user?.can_add_tasks
+  const canAdd    = isAdmin || isTasker || user?.can_add_tasks
 
   // ── Export ─────────────────────────────────────────────────────────────────
 
@@ -99,12 +106,11 @@ export default function Tasks() {
     setError(null)
     try {
       const params = new URLSearchParams()
-
       if (selectedGroup?.id !== 'ALL') params.set('group',    selectedGroup?.id)
       if (query)                        params.set('search',   query)
       if (timeline)                     params.set('timeline', timeline)
 
-      if (statusFilter === STATUS.DONE)     params.set('status',   'bajarildi')
+      if (statusFilter === STATUS.DONE)          params.set('status',   'bajarildi')
       else if (statusFilter === STATUS.OVERDUE)  params.set('overdue',  'true')
       else if (statusFilter === STATUS.UPCOMING) params.set('upcoming', 'true')
 
@@ -179,10 +185,10 @@ export default function Tasks() {
   const doneTasks       = statusFilter === STATUS.DONE ? tasks : []
 
   const statCards = [
-    { key: STATUS.ALL,      label: 'Jami',            value: total,    icon: Calendar,      mod: ''                          },
-    { key: STATUS.UPCOMING, label: 'Kutilmoqda',       value: upcoming, icon: Clock,         mod: 'blue', sub: dueToday > 0 ? `${dueToday} bugun` : null },
-    { key: STATUS.OVERDUE,  label: "Muddati o'tgan",  value: overdue,  icon: AlertTriangle, mod: overdue > 0 ? 'urgent' : '' },
-    { key: STATUS.DONE,     label: 'Bajarilgan',       value: done,     icon: Inbox,         mod: 'green'                     },
+    { key: STATUS.ALL,      label: 'Jami',           value: total,    icon: Calendar,      mod: ''                                           },
+    { key: STATUS.UPCOMING, label: 'Kutilmoqda',      value: upcoming, icon: Clock,         mod: 'blue', sub: dueToday > 0 ? `${dueToday} bugun` : null },
+    { key: STATUS.OVERDUE,  label: "Muddati o'tgan", value: overdue,  icon: AlertTriangle, mod: overdue > 0 ? 'urgent' : ''                  },
+    { key: STATUS.DONE,     label: 'Bajarilgan',      value: done,     icon: Inbox,         mod: 'green'                                      },
   ]
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -399,6 +405,35 @@ function Section({ title, count, variant, children }) {
   )
 }
 
+// ── GroupStatusRow  — compact per-group status strip inside a task card ────────
+
+function GroupStatusRow({ statuses }) {
+  if (!statuses?.length) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+      {statuses.map(gs => {
+        const c = GROUP_STATUS_COLOR[gs.status] ?? GROUP_STATUS_COLOR.kutilmoqda
+        return (
+          <span
+            key={gs.group_id}
+            title={gs.group_name}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              padding: '1px 6px', borderRadius: 20,
+              fontSize: 9, fontWeight: 700,
+              color: c.text, background: c.bg,
+              border: `1px solid ${c.dot}44`,
+            }}
+          >
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: c.dot, flexShrink: 0 }} />
+            {gs.group_short_name}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── TaskCard ───────────────────────────────────────────────────────────────────
 
 function TaskCard({ task, onDelete, onClick }) {
@@ -412,11 +447,9 @@ function TaskCard({ task, onDelete, onClick }) {
                 : isTomorDl ? 'Ertaga'
                 : fmtDate(task.deadline)
 
-  const dlMod = isOverdue ? 'over' : isTodayDl ? 'today' : isTomorDl ? 'tmrw' : ''
-
-  // CHANGED: was  task.group_name  (string)
-  // Now         task.group_names  (array) — render one tag per group
-  const groupNames = task.group_names ?? []
+  const dlMod      = isOverdue ? 'over' : isTodayDl ? 'today' : isTomorDl ? 'tmrw' : ''
+  const groupNames = task.group_names    ?? []
+  const groupStats = task.group_statuses ?? []
 
   return (
     <div
@@ -428,9 +461,6 @@ function TaskCard({ task, onDelete, onClick }) {
       <div className="t-tbody">
         <div className="t-tname">{task.name}</div>
         <div className="t-tmeta">
-
-          {/* CHANGED: was  task.group_name && <span>...</span>
-              Now renders one tag per group — handles 1, 2, or 3 groups naturally */}
           {groupNames.map(name => (
             <span key={name} className="t-tag t-tag-group">{name}</span>
           ))}
@@ -450,6 +480,12 @@ function TaskCard({ task, onDelete, onClick }) {
             <span className="t-tag t-tag-soon">Tez orada</span>
           )}
         </div>
+
+        {/* Per-group status strip — only shown when task has multiple groups
+            or when the single group's status differs from the master status    */}
+        {groupStats.length > 1 || (groupStats.length === 1 && groupStats[0].status !== task.status) ? (
+          <GroupStatusRow statuses={groupStats} />
+        ) : null}
       </div>
 
       {onDelete && (

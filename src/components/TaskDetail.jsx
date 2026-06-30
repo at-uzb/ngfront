@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, Check, X, Clock, AlertCircle,
-  Paperclip, MessageSquare, Send, Loader,
-  User, Calendar, RefreshCw, Shield, ChevronDown, FileText, Play,
+  Paperclip, MessageSquare, Send, Loader, Download,
+  User, Calendar, RefreshCw, Shield, ChevronDown, FileText, Play, Flag,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import api from '../lib/api'
@@ -83,6 +83,13 @@ const PRIORITY_MAP = {
   low:    { label: 'Past',   cls: 'badge-low',  dot: '#6EE7B7' },
 }
 
+// Status pill for a single group's row in the per-group status list
+const GROUP_STATUS_DOT = {
+  kutilmoqda: '#94A3B8',
+  jarayonda:  '#3B82F6',
+  bajarildi:  '#10B981',
+}
+
 export default function TaskDetail() {
   const { id }      = useParams()
   const navigate    = useNavigate()
@@ -100,8 +107,6 @@ export default function TaskDetail() {
   const [uploading,   setUploading]   = useState(false)
   const [lightbox,    setLightbox]    = useState(null)
   const [cmtFiles,    setCmtFiles]    = useState([])
-  const [finishing,   setFinishing]   = useState(false)
-  const [confirmDone, setConfirmDone] = useState(false)
 
   const commentEndRef = useRef(null)
   const cmtFileRef    = useRef(null)
@@ -185,22 +190,29 @@ export default function TaskDetail() {
     } finally { setSendingCmt(false) }
   }
 
-  const handleApprove = async () => {
-    setSaving(true); setSaveErr('')
-    try {
-      await api.post(`/tasks/kts/${id}/approve/`)
-      setTask(prev => ({ ...prev, status: 'jarayonda', can_approve: false }))
-    } catch { setSaveErr('Jarayonga olishda xatolik yuz berdi') }
-    finally  { setSaving(false) }
-  }
+  // REMOVED: handleApprove — ApproveNewTaskView no longer exists.
+  // The new flow has no approval step; a group uploading finish media
+  // automatically advances their KTGroupStatus to jarayonda.
 
-  const handleMarkDone = async () => {
-    setFinishing(true); setSaveErr('')
+  // REMOVED: handleMarkDone — finishing now happens per-group, not per-task.
+  // See KtFinishMedia page where each group has its own Finish button.
+
+  const handleDownloadDocx = async () => {
     try {
-      await api.post(`/tasks/kts/${id}/done/`)
-      setTask(prev => ({ ...prev, status: 'bajarildi', can_finish: false }))
-    } catch { setSaveErr('Yakunlashda xatolik yuz berdi') }
-    finally  { setFinishing(false) }
+      const res = await api.get(`/tasks/kts/${id}/export-docx/`, {
+        responseType: 'blob',
+      })
+      const url  = URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href     = url
+      link.download = `task_${id}.docx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setSaveErr('Word faylni yuklab olishda xatolik yuz berdi')
+    }
   }
 
   if (loading) return <DetailSkeleton />
@@ -217,17 +229,19 @@ export default function TaskDetail() {
   const pr = PRIORITY_MAP[task.priority] ?? PRIORITY_MAP.medium
   const canEdit    = task.can_edit         ?? isAdmin
   const canUpload  = task.can_upload_media ?? isAdmin
+  // FIXED: was reusing canUpload (which is true for site admin too).
+  // This is a dedicated field — only true for group admins of an assigned group.
+  const canUploadFinishMedia = task.can_upload_finish_media ?? false
   const canComment = task.can_comment      ?? true
-  const canApprove = task.can_approve      ?? false
-  const canFinish  = task.can_finish       ?? false
   const comments   = task.comments         ?? []
 
-  // CHANGED: was  task.group  (single object)
-  // Now  task.groups  (array) — safe default to empty array
-  const groups = task.groups ?? []
+  // FIXED: can_finish is now an ARRAY of group_ids (from KTDetailSerializer),
+  // not a boolean. Empty array → no group is ready to be finished by this user.
+  const finishableGroupIds = task.can_finish ?? []
 
-  // Collect all unique admins across every assigned group for the admins panel
-  // CHANGED: was  task.group?.group_admins
+  const groups        = task.groups         ?? []
+  const groupStatuses = task.group_statuses ?? []
+
   const allAdmins = groups.flatMap(g => g.group_admins ?? [])
   const uniqueAdmins = allAdmins.filter(
     (admin, idx, arr) => arr.findIndex(a => a.id === admin.id) === idx
@@ -249,13 +263,10 @@ export default function TaskDetail() {
             <span className="td-pill pill-overdue"><Clock size={10} /> Muddati o'tgan</span>
           )}
 
-          {/* CHANGED: was  task.group && <span>...</span>  (one pill)
-              Now renders one pill per group — 1 group looks identical to before */}
           {groups.map(g => (
             <span key={g.id} className="td-pill pill-group">
               <span className="td-grp-chip">{g.short_name}</span>
               {g.name}
-              {/* is_admin flag comes from KTDetailView.retrieve() per-group annotation */}
               {g.is_admin && <Shield size={9} style={{ marginLeft: 3, opacity: 0.6 }} />}
             </span>
           ))}
@@ -275,6 +286,7 @@ export default function TaskDetail() {
           )}
 
           <div className="td-title-actions">
+
             {canEdit && (
               editing ? (
                 <>
@@ -286,46 +298,63 @@ export default function TaskDetail() {
                   </button>
                 </>
               ) : (
-                <button className="td-icon-btn" onClick={() => setEditing(true)}>
-                  <Pencil size={13} strokeWidth={1.8} />
-                </button>
+                <>
+                  <button className="td-icon-btn" onClick={() => setEditing(true)} title="Tahrirlash">
+                    <Pencil size={13} strokeWidth={1.8} />
+                  </button>
+                  <button className="td-icon-btn" onClick={handleDownloadDocx} title="Word yuklab olish">
+                    <Download size={13} strokeWidth={1.8} />
+                  </button>
+                </>
               )
             )}
 
-            {canApprove && !editing && task.status === 'kutilmoqda' && (
-              <button className="td-action-btn approve" onClick={() => navigate(`/tasks/${id}/finish/`)}>
-                <Play size={13} strokeWidth={2} />
-                <span className="td-finish-label">Davom etish</span>
+            {/* CHANGED: was a single "Yakunlash" button tied to task.status.
+                Now: if this user can finish ANY group, send them to the
+                finish-media page where each group has its own button. */}
+            {!editing && finishableGroupIds.length > 0 && (
+              <button
+                className="td-action-btn finish"
+                onClick={() => navigate(`/tasks/${id}/finish-media/`)}
+              >
+                <Flag size={13} strokeWidth={2.5} />
+                <span className="td-finish-label">
+                  Yakunlash ({finishableGroupIds.length})
+                </span>
               </button>
             )}
 
-            {canFinish && !editing && task.status === 'jarayonda' && (
-              confirmDone ? (
-                <div className="td-finish-confirm">
-                  <span className="td-finish-confirm-text">Ishonchingiz komilmi?</span>
-                  <button
-                    className="td-action-btn finish confirm"
-                    onClick={() => { handleMarkDone(); setConfirmDone(false) }}
-                    disabled={finishing}
-                  >
-                    {finishing ? <Loader size={13} className="t-spin" /> : <Check size={13} strokeWidth={2.5} />}
-                    <span className="td-finish-label">Ha</span>
-                  </button>
-                  <button className="td-finish-cancel" onClick={() => setConfirmDone(false)}>
-                    <X size={13} strokeWidth={2} />
-                  </button>
-                </div>
-              ) : (
-                <button className="td-action-btn finish" onClick={() => setConfirmDone(true)}>
-                  <Check size={14} strokeWidth={2.5} />
-                  <span className="td-finish-label">Yakunlash</span>
-                </button>
-              )
+            {/* FIXED: was  canUpload  (site admin always true → wrong button shown).
+                Now uses canUploadFinishMedia — only group admins of an
+                assigned group ever see this button. */}
+            {!editing && canUploadFinishMedia && finishableGroupIds.length === 0 && (
+              <button
+                className="td-action-btn approve"
+                onClick={() => navigate(`/tasks/${id}/finish-media/`)}
+              >
+                <Play size={13} strokeWidth={2} />
+                <span className="td-finish-label">Javob yuklash</span>
+              </button>
             )}
           </div>
         </div>
 
         {saveErr && <p className="td-save-err">{saveErr}</p>}
+
+        {/* NEW: per-group status strip — shows where each assigned group stands */}
+        {groupStatuses.length > 1 && (
+          <div className="td-group-status-row">
+            {groupStatuses.map(gs => (
+              <span key={gs.group_id} className="td-group-status-chip" title={gs.group_name}>
+                <span
+                  className="td-pill-dot"
+                  style={{ background: GROUP_STATUS_DOT[gs.status] ?? '#94A3B8' }}
+                />
+                {gs.group_short_name} — {STATUS_MAP[gs.status]?.label ?? gs.status}
+              </span>
+            ))}
+          </div>
+        )}
 
         {task.created_by && (
           <div className="creator-card">
@@ -490,9 +519,7 @@ export default function TaskDetail() {
         )}
       </div>
 
-      {/* GROUP ADMINS
-          CHANGED: was  task.group?.group_admins  (admins of one group)
-          Now collects admins from ALL assigned groups, deduped by id */}
+      {/* GROUP ADMINS */}
       {uniqueAdmins.length > 0 && (
         <div className="td-section-card">
           <div className="td-section-hd">
